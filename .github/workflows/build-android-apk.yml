@@ -50,6 +50,9 @@ jobs:
       - name: Generate Android project
         run: npx cap add android
 
+      - name: Generate branded Android launcher icons
+        run: java scripts/GenerateAndroidIcons.java android/app/src/main/res
+
       - name: Sync Capacitor assets
         run: npx cap sync android
 

@@ -158,3 +158,68 @@ body,.app-shell{background:#101114;color:#f2f2f3}.app-shell{background:radial-gr
 @media(max-width:600px){.brand{gap:3px}.brand-mark{width:26px;height:26px}.messages-shell:not(.mobile-chat-open){display:block}.messages-shell:not(.mobile-chat-open) .chat-panel{display:none}.messages-shell:not(.mobile-chat-open) .inbox{display:flex;flex-direction:column;height:100%;border-right:0}.messages-shell.mobile-chat-open{display:block}.messages-shell.mobile-chat-open .inbox{display:none}.messages-shell.mobile-chat-open .chat-panel{display:flex;height:100%}.inbox-head{padding:15px 13px 12px}.inbox-head h2{font-size:16px}.inbox-head p{display:block;font-size:10px}.inbox-search{height:40px;margin:0 12px 10px;padding:0 10px}.inbox-search input,.inbox-search input::placeholder{font-size:12px;color:#888}.inbox-list{flex:1}.inbox-person{min-height:68px;padding:10px 13px;gap:11px}.inbox-person b{font-size:12px}.inbox-person small{font-size:10px}.chat-back{width:38px;height:38px}.dark .chat-back:hover{background:#ffffff12}.chat-head{gap:8px}.conversation-copy,.conversation-time,.conversation .unread-dot{display:initial}.top-actions>.icon-btn,.top-actions .top-avatar{flex:none}.post-actions button{min-width:54px}.form-label input,.form-label select,.form-label textarea,.post-textarea,.comment-compose input{font-size:16px}}
 @media(max-width:380px){.brand{gap:2px}.brand-mark{width:24px;height:24px}.top-actions{gap:0}.top-actions>.icon-btn,.top-actions .top-avatar{width:28px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+/* Android WebView viewport and readable mobile type scale */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media(max-width:600px){
+  body,.app-shell{font-size:15px}
+  .layout{padding-top:16px}
+  .page-title-row{align-items:flex-start;gap:9px;margin-bottom:17px}
+  .page-title-row h1{font-size:25px;line-height:1.2;letter-spacing:-.65px}
+  .page-subtitle{font-size:13px;line-height:1.5;color:#737373}
+  .eyebrow{font-size:10px;letter-spacing:1.15px}
+  .create-top{width:42px;height:42px}
+  .stories{background:#fff;border-color:#dededc;padding:14px;border-radius:16px}
+  .stories-head,.rail-heading>b{font-size:13px;color:#202020}
+  .stories-head>span{font-size:11px;color:#777}
+  .stories-row{gap:13px}
+  .story{font-size:11px;min-width:58px;min-height:76px;color:#555}
+  .story-ring{width:54px;height:54px}
+  .story-ring .avatar,.story-ring img{width:47px;height:47px}
+  .story-empty{font-size:12px;line-height:1.4}
+  .feed-tabs{height:52px}
+  .tab-list button{font-size:14px;min-width:105px}
+  .composer{min-height:64px;padding:10px 13px}
+  .composer>span{font-size:13px}
+  .university-chip{font-size:12px;line-height:1.45;padding:11px 12px}
+  .post-copy{font-size:15px;line-height:1.6}
+  .post-head b,.suggestion b,.person-card h3{font-size:13px}
+  .post-head .muted,.post-meta,.post-meta button,.post-actions button{font-size:12px}
+  .post-meta{padding:10px 0}
+  .post-actions button{min-height:46px}
+  .tiny,.muted.tiny{font-size:11px;line-height:1.45}
+  .card.empty-state{font-size:14px;line-height:1.55;padding:16px;border-radius:15px;overflow-wrap:anywhere}
+  .right-rail .rail-card{padding:15px;border-radius:15px}
+  .rail-card .eyebrow,.campus-card .eyebrow{font-size:10px}
+  .campus-card h3{font-size:16px}
+  .campus-card>p,.rail-card>p,.suggestion small{font-size:12px;line-height:1.5}
+  .campus-link,.rail-heading>button{font-size:12px}
+  .campus-metrics small{font-size:11px}
+  .section-head h2{font-size:18px}
+  .section-head p{font-size:12px;line-height:1.45}
+  .chip{font-size:11px;min-height:37px}
+  .discover-tools .button{font-size:11px}
+  .search-field input{font-size:13px}
+  .person-card{padding:15px 11px 12px}
+  .person-card h3{font-size:14px}
+  .person-card>p,.school{font-size:11px;line-height:1.4}
+  .person-actions .button{font-size:11px;min-height:40px}
+  .univ-identity h2{font-size:17px}
+  .univ-identity p{font-size:11px}
+  .univ-nav button{font-size:12px}
+  .group-card-body h3{font-size:13px}
+  .group-card-body>p,.group-member-row>span{font-size:10px;line-height:1.4}
+  .group-card .full{font-size:11px;min-height:40px}
+  .opportunity-title h3{font-size:13px}
+  .type-tag{font-size:9px}
+  .company-name,.opportunity-detail{font-size:11px}
+  .opportunity-description{font-size:12px;line-height:1.5}
+  .opportunity-actions .button{font-size:11px}
+  .notification-copy p{font-size:13px;line-height:1.45}
+  .notification-copy>small{font-size:11px}
+  .bottom-nav button{font-size:10px;min-width:49px}
+  .inbox-person b{font-size:13px}
+  .inbox-person small{font-size:11px}
+  .story-own-open{font-size:11px}
+}
+@media(max-width:380px){.page-title-row h1{font-size:23px}.tab-list button{font-size:13px}.bottom-nav{padding-left:4px;padding-right:4px}.bottom-nav button{font-size:9px;min-width:46px}.person-actions .button{font-size:10px}}
+.dark .card.empty-state{color:#eee;background:#242424;border-color:#383838}
