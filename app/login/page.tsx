@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { Capacitor, SystemBars, SystemBarsStyle, SystemBarType } from "@capacitor/core";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { createClient } from "../../lib/supabase/client";
@@ -58,6 +59,10 @@ export default function LoginPage() {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      document.documentElement.classList.add("native-app");
+      void SystemBars.setStyle({ bar: SystemBarType.StatusBar, style: SystemBarsStyle.Dark }).catch(() => {});
+    }
     let active = true;
     const supabase = createClient();
     const isRecovery = window.location.search.includes("type=recovery") || window.location.hash.includes("type=recovery");
@@ -71,7 +76,7 @@ export default function LoginPage() {
         if (active) setError("You’re signed in, but we couldn’t finish setting up your profile. Please try again.");
       }
     });
-    return () => { active = false; };
+    return () => { active = false; document.documentElement.classList.remove("native-app"); };
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
