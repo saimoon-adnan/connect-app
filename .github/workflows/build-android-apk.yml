@@ -38,6 +38,19 @@ jobs:
           test -n "$NEXT_PUBLIC_SUPABASE_URL" || { echo "Missing NEXT_PUBLIC_SUPABASE_URL Actions secret"; exit 1; }
           test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" || { echo "Missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY Actions secret"; exit 1; }
 
+      - name: Verify CONNECT Supabase project and email confirmation setting
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          project_ref="$(python -c 'import os, urllib.parse; print(urllib.parse.urlparse(os.environ["NEXT_PUBLIC_SUPABASE_URL"]).hostname.split(".")[0])')"
+          test "$project_ref" = "kvigayczpzgvvfliyayi" || { echo "Wrong Supabase project in GitHub Actions secret: $project_ref"; exit 1; }
+          settings="$(curl --fail --silent --show-error -H "apikey: $NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/settings")"
+          auto_confirm="$(printf '%s' "$settings" | python -c 'import json,sys; print(str(json.load(sys.stdin).get("mailer_autoconfirm", False)).lower())')"
+          echo "Supabase project ref: $project_ref"
+          echo "Supabase email auto-confirm: $auto_confirm"
+          test "$auto_confirm" = "true" || { echo "Turn off Confirm email for the CONNECT project's Email provider, then rerun this workflow."; exit 1; }
+
       - name: Type-check app
         run: npm run lint
 
