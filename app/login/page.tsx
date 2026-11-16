@@ -72,8 +72,11 @@ export default function LoginPage() {
       try {
         await ensureProfile(data.session.user);
         if (active) window.location.replace("/");
-      } catch {
-        if (active) setError("You’re signed in, but we couldn’t finish setting up your profile. Please try again.");
+      } catch (cause) {
+        if (active) {
+          setError(cause instanceof Error ? cause.message : "We couldn’t finish setting up your profile. Please try again.");
+          console.error("Profile setup failed", cause);
+        }
       }
     });
     return () => { active = false; document.documentElement.classList.remove("native-app"); };
@@ -141,6 +144,7 @@ export default function LoginPage() {
       window.location.replace("/");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Something went wrong. Please try again.");
+      console.error("Authentication failed", cause);
     } finally {
       setPending(false);
     }
