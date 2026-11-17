@@ -5,6 +5,7 @@ import { Capacitor, SystemBars, SystemBarsStyle, SystemBarType } from "@capacito
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { createClient } from "../../lib/supabase/client";
+import { describeError } from "../../lib/errors";
 import { NUB_UNIVERSITY_ID } from "../../lib/supabase/data";
 
 type Mode = "signin" | "signup" | "confirm" | "reset" | "update";
@@ -74,7 +75,7 @@ export default function LoginPage() {
         if (active) window.location.replace("/");
       } catch (cause) {
         if (active) {
-          setError(cause instanceof Error ? cause.message : "We couldn’t finish setting up your profile. Please try again.");
+          setError(describeError(cause));
           console.error("Profile setup failed", cause);
         }
       }
@@ -143,7 +144,7 @@ export default function LoginPage() {
       await ensureProfile(data.user);
       window.location.replace("/");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Something went wrong. Please try again.");
+      setError(describeError(cause));
       console.error("Authentication failed", cause);
     } finally {
       setPending(false);
@@ -164,7 +165,7 @@ export default function LoginPage() {
       if (resendError) setError(resendError.message);
       else setNotice(`A new confirmation link was sent to ${pendingEmail}.`);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not resend the confirmation email.");
+      setError(describeError(cause));
     } finally {
       setPending(false);
     }

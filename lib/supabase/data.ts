@@ -204,6 +204,64 @@ export async function sendConnectionRequest(senderId: string, recipientId: strin
   if (error) throw error;
 }
 
+export type ConnectionStatus = "pending_sent" | "pending_received" | "accepted" | "declined";
+export type ConnectionStatusMap = Record<string, ConnectionStatus>;
+
+export async function fetchConnectionStatuses(profileId: string): Promise<ConnectionStatusMap> {
+  const supabase = createClient();
+  const { data, error } = await supabase.from("connection_requests")
+    .select("sender_id,recipient_id,status")
+    .or(`sender_id.eq.${profileId},recipient_id.eq.${profileId}`);
+  if (error) throw error;
+  const map: ConnectionStatusMap = {};
+  for (const row of data ?? []) {
+    const otherId = row.sender_id === profileId ? row.recipient_id : row.sender_id;
+    const status = row.status as ConnectionStatus;
+    const previous = map[otherId];
+    if (!previous) { map[otherId] = status; continue; }
+    // Prefer the most informative state: an accepted connection beats a pending one, which beats a decline.
+    if (status === "accepted" || previous === "accepted") map[otherId] = "accepted";
+    else if (previous === "declined" && status !== "declined") map[otherId] = status;
+  }
+  return map;
+}
+
+export async function fetchConnectionCount(profileId: string): Promise<number> {
+  const { data, error } = await createClient().rpc("get_connection_count", { target_profile_id: profileId });
+  if (error) throw error;
+  return Number(data ?? 0);
+}
+
+export async function fetchMyConnections(profileId: string): Promise<Person[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase.from("connection_requests")
+    .select("sender_id,recipient_id")
+    .eq("status", "accepted")
+    .or(`sender_id.eq.${profileId},recipient_id.eq.${profileId}`);
+  if (error) throw error;
+  const otherIds = Array.from(new Set((data ?? []).map(row => row.sender_id === profileId ? row.recipient_id : row.sender_id)));
+  if (!otherIds.length) return [];
+  const { data: profiles, error: profilesError } = await supabase.from("profiles")
+    .select("id,display_name,headline,avatar_url,university:universities!profiles_university_id_fkey(name)")
+    .in("id", otherIds);
+  if (profilesError) throw profilesError;
+  return (profiles ?? []).map((row, index) => {
+    const university = Array.isArray(row.university) ? row.university[0] : row.university;
+    return { id: index + 1, profileId: row.id, isRegistered: true, name: row.display_name, role: row.headline ?? "University member",
+      school: university?.name ?? "CONNECT", avatar: row.avatar_url ?? uniqueAvatarUrl(row.display_name, index), tag: "Connected" };
+  });
+}
+
+export async function removeConnection(profileId: string, otherProfileId: string) {
+  const { data, error } = await createClient().from("connection_requests")
+    .delete()
+    .eq("status", "accepted")
+    .or(`and(sender_id.eq.${profileId},recipient_id.eq.${otherProfileId}),and(sender_id.eq.${otherProfileId},recipient_id.eq.${profileId})`)
+    .select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Could not remove connection");
+}
+
 export type ChatMessage = { id: string; body: string; created_at: string; sender_id: string };
 export type ChatConversation = { id: string; person: Person; lastMessage: string; updated_at: string };
 
