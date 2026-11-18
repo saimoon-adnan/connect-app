@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, CheckCircle2, Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { createClient } from "../../lib/supabase/client";
 import { describeError } from "../../lib/errors";
-import { NUB_UNIVERSITY_ID } from "../../lib/supabase/data";
+import { NUB_UNIVERSITY_ID, University, fetchUniversities } from "../../lib/supabase/data";
 
 type Mode = "signin" | "signup" | "confirm" | "reset" | "update";
 
@@ -33,9 +33,11 @@ async function ensureProfile(user: { id: string; email?: string; user_metadata?:
     .toLowerCase()
     .replace(/[^a-z0-9_]/g, "")
     .slice(0, 22);
+  const universityId =
+    (typeof user.user_metadata?.university_id === "string" && user.user_metadata.university_id.trim()) || NUB_UNIVERSITY_ID;
   const { error: insertError } = await supabase.from("profiles").insert({
     auth_user_id: user.id,
-    university_id: NUB_UNIVERSITY_ID,
+    university_id: universityId,
     username: `${usernameBase}_${user.id.slice(0, 6)}`,
     display_name: displayName,
     department,
@@ -48,6 +50,8 @@ async function ensureProfile(user: { id: string; email?: string; user_metadata?:
 export default function LoginPage() {
   const [mode, setMode] = useState<Mode>("signin");
   const [name, setName] = useState("");
+  const [universityId, setUniversityId] = useState("");
+  const [universities, setUniversities] = useState<University[]>([]);
   const [department, setDepartment] = useState("");
   const [studyYear, setStudyYear] = useState("");
   const [interests, setInterests] = useState("");
@@ -64,6 +68,8 @@ export default function LoginPage() {
       document.documentElement.classList.add("native-app");
       void SystemBars.setStyle({ bar: SystemBarType.StatusBar, style: SystemBarsStyle.Dark }).catch(() => {});
     }
+    const modeParam = new URLSearchParams(window.location.search).get("mode");
+    if (modeParam === "signup") setMode("signup");
     let active = true;
     const supabase = createClient();
     const isRecovery = window.location.search.includes("type=recovery") || window.location.hash.includes("type=recovery");
@@ -80,6 +86,7 @@ export default function LoginPage() {
         }
       }
     });
+    fetchUniversities().then(list => { if (active && list.length) { setUniversities(list); setUniversityId(list[0].id); } }).catch(() => {});
     return () => { active = false; document.documentElement.classList.remove("native-app"); };
   }, []);
 
@@ -108,6 +115,10 @@ export default function LoginPage() {
       }
 
       if (mode === "signup") {
+        if (!universityId) {
+          setError("Please select your university.");
+          return;
+        }
         const { data, error: signupError } = await supabase.auth.signUp({
           email,
           password,
@@ -117,6 +128,7 @@ export default function LoginPage() {
               department: department.trim(),
               study_year: studyYear,
               interests: interests.split(",").map(item => item.trim()).filter(Boolean).slice(0, 10),
+              university_id: universityId,
             },
             emailRedirectTo: `${window.location.origin}/login`,
           },
@@ -129,27 +141,37 @@ export default function LoginPage() {
           return;
         }
         if (data.session && data.user) {
-          await ensureProfile(data.user);
-          window.location.replace("/");
-          return;
-        }
-        setPendingEmail(email);
-        setMode("confirm");
-        setNotice("");
+          try {
+        localStorage.setItem("connect_has_account", "1");
+        await ensureProfile(data.user);
+        window.location.replace("/");
         return;
+      } catch (cause) {
+        setError(describeError(cause));
+        console.error("Profile setup failed", cause);
+      } finally {
+        setPending(false);
       }
-
-      const { data, error: signinError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signinError) throw signinError;
-      await ensureProfile(data.user);
-      window.location.replace("/");
-    } catch (cause) {
-      setError(describeError(cause));
-      console.error("Authentication failed", cause);
-    } finally {
-      setPending(false);
+      return;
     }
+    setPendingEmail(email);
+    setMode("confirm");
+    setNotice("");
+    return;
   }
+
+  const { data, error: signinError } = await supabase.auth.signInWithPassword({ email, password });
+  if (signinError) throw signinError;
+  localStorage.setItem("connect_has_account", "1");
+  await ensureProfile(data.user);
+  window.location.replace("/");
+} catch (cause) {
+  setError(describeError(cause));
+  console.error("Authentication failed", cause);
+} finally {
+  setPending(false);
+}
+}
 
   async function resendConfirmation() {
     if (!pendingEmail) return;
@@ -219,7 +241,7 @@ export default function LoginPage() {
             <label className="auth-field"><span>Your name</span><div><UserRound size={17}/><input autoComplete="name" value={name} onChange={event => setName(event.target.value)} placeholder="Alex Rahman" required minLength={2}/></div></label>
           )}
           {mode === "signup" && <>
-            <label className="auth-field"><span>University</span><div><input value="Northern University Bangladesh" readOnly aria-label="University"/></div></label>
+            <label className="auth-field"><span>University</span><div><select value={universityId} onChange={event => setUniversityId(event.target.value)} required aria-label="University"><option value="">Select your university</option>{universities.map(u => (<option key={u.id} value={u.id}>{u.name}</option>))}</select></div></label>
             <label className="auth-field"><span>Department</span><div><input autoComplete="organization-title" value={department} onChange={event => setDepartment(event.target.value)} placeholder="e.g. Computer Science and Engineering" required minLength={2}/></div></label>
             <label className="auth-field"><span>Study year</span><div><select value={studyYear} onChange={event => setStudyYear(event.target.value)} required aria-label="Study year"><option value="">Select your current year</option><option>1st year</option><option>2nd year</option><option>3rd year</option><option>4th year</option><option>Graduate</option><option>Alumni</option></select></div></label>
             <label className="auth-field"><span>Interests <small>(comma separated)</small></span><div><input value={interests} onChange={event => setInterests(event.target.value)} placeholder="e.g. AI, design, entrepreneurship" required/></div></label>

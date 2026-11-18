@@ -3,11 +3,20 @@ import { createClient } from "./client";
 
 export const NUB_UNIVERSITY_ID = "00000000-0000-4000-8000-000000000001";
 
+export type University = { id: string; name: string; slug: string; city: string };
+
+export async function fetchUniversities(): Promise<University[]> {
+  const { data, error } = await createClient().from("universities").select("id,name,slug,city").order("name");
+  if (error) throw error;
+  return data ?? [];
+}
+
 export type CampusStory = { id: string; authorId: string; imageUrl: string; createdAt: string; expiresAt: string; author: Person };
 
-export async function fetchCampusStories(): Promise<CampusStory[]> {
+export async function fetchCampusStories(universityId = NUB_UNIVERSITY_ID): Promise<CampusStory[]> {
   const { data, error } = await createClient().from("stories")
-    .select("id,author_id,image_url,created_at,expires_at,author:profiles!stories_author_id_fkey(id,display_name,headline,avatar_url,university:universities!profiles_university_id_fkey(name))")
+    .select("id,author_id,image_url,created_at,expires_at,author:profiles!stories_author_id_fkey(id,display_name,headline,avatar_url,university:universities!profiles_university_id_fkey(id,name))")
+    .eq("profiles.university_id", universityId)
     .gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).flatMap((row, index) => {
@@ -15,7 +24,7 @@ export async function fetchCampusStories(): Promise<CampusStory[]> {
     if (!author) return [];
     const university = Array.isArray(author.university) ? author.university[0] : author.university;
     return [{ id: row.id, authorId: row.author_id, imageUrl: row.image_url, createdAt: row.created_at, expiresAt: row.expires_at,
-      author: { id: index + 1, profileId: author.id, isRegistered: true, name: author.display_name, role: author.headline ?? "University member",
+      author: { id: index + 1, profileId: author.id, universityId: university?.id, isRegistered: true, name: author.display_name, role: author.headline ?? "University member",
         school: university?.name ?? "Northern University Bangladesh", avatar: author.avatar_url ?? uniqueAvatarUrl(author.display_name, index) } }];
   });
 }
@@ -111,7 +120,7 @@ export async function fetchPublicProfile(profileId: string): Promise<PublicProfi
     coverUrl: profile.cover_url ?? undefined, bio: profile.bio ?? "", isRegistered: Boolean(profile.auth_user_id) };
   const { data: postsData, error: postsError } = await supabase.from("posts")
     .select("id,body,image_url,tag,created_at,university_id,likes:post_likes(count),comments(count)")
-    .eq("author_id", profileId).eq("audience", "public").order("created_at", { ascending: false }).limit(20);
+    .eq("author_id", profileId).order("created_at", { ascending: false }).limit(20);
   if (postsError) throw postsError;
   const posts: FeedPost[] = (postsData ?? []).map(row => ({ id: row.id, author: person, time: relativeTime(row.created_at), body: row.body,
     image: row.image_url ?? "", likes: relationCount(row.likes), comments: relationCount(row.comments), tag: row.tag, university: row.university_id ?? undefined }));

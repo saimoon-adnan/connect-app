@@ -231,3 +231,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 @media(max-width:600px){.native-app .topbar{--connect-status-inset:max(env(safe-area-inset-top,0px),24px);height:calc(58px + var(--connect-status-inset));padding:var(--connect-status-inset) 10px 0}.native-app .brand{min-width:0;flex:0 0 auto}.native-app .global-search{display:none}.native-app .top-actions{flex:none;gap:2px}.native-app .auth-page{padding-top:calc(max(env(safe-area-inset-top,0px),24px) + 15px)}}
 @media(max-width:380px){.native-app .topbar{padding-top:var(--connect-status-inset)}}
 .dark .card.empty-state{color:#eee;background:#242424;border-color:#383838}
+.auth-shell{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 20%,#25262b 0,#16171b 45%,#101114 100%)}
+.auth-logo-pulse{width:60px;height:60px;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.6;transform:scale(.95)}50%{opacity:1;transform:scale(1.05)}}
+

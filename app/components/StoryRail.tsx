@@ -10,11 +10,12 @@ function initialsAvatar(person: Person) {
   return person.avatar || "/connect-mark.svg";
 }
 
-export default function StoryRail({ profileId, account, authenticated, onNotice }: {
+export default function StoryRail({ profileId, account, authenticated, onNotice, universityId }: {
   profileId: string | null;
   account: Person;
   authenticated: boolean;
   onNotice: (message: string) => void;
+  universityId: string | null;
 }) {
   const [stories, setStories] = useState<CampusStory[]>([]);
   const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
@@ -25,7 +26,7 @@ export default function StoryRail({ profileId, account, authenticated, onNotice 
 
   async function refresh() {
     if (!authenticated) { setStories([]); setLoading(false); return; }
-    try { setStories(await fetchCampusStories()); }
+    try { setStories(await fetchCampusStories(universityId || undefined)); }
     catch { onNotice("Could not load campus stories. Run the stories migration first."); }
     finally { setLoading(false); }
   }
