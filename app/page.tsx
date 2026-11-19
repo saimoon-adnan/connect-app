@@ -1,7 +1,7 @@
 "use client";
 import {useEffect,useMemo,useState} from "react";
 import {Capacitor,SystemBars,SystemBarsStyle,SystemBarType} from "@capacitor/core";
-import {Bell,Bookmark,BriefcaseBusiness,Building2,CalendarDays,Check,ChevronDown,ChevronRight,CircleHelp,Compass,Ellipsis,FileText,Filter,Flame,Heart,Home,Image as ImageIcon,Link as LinkIcon,Mail,Menu,MessageCircle,MessageSquare,MoreHorizontal,Plus,Search,Send,Settings,Share2,ShieldCheck,SlidersHorizontal,Sparkles,Users,UserRound,UserPlus,Video, X, GraduationCap, MapPin, Clock3, ArrowUpRight, Hash, Camera, CheckCheck, Phone, Smile, Paperclip, Mic, Globe2, Sun, LogOut, Moon, ThumbsUp, ChartNoAxesColumnIncreasing, MessageSquareText, ChevronLeft, ExternalLink, Briefcase, CirclePlus, BellRing} from "lucide-react";
+import {Bell,Bookmark,BriefcaseBusiness,Building2,CalendarDays,Check,ChevronDown,ChevronRight,CircleHelp,Compass,Ellipsis,FileText,Filter,Flame,Heart,Home,Image as ImageIcon,Link as LinkIcon,Mail,Menu,MessageCircle,MessageSquare,MoreHorizontal,Plus,Search,Send,Settings,Share2,ShieldCheck,SlidersHorizontal,Sparkles,Users,UserRound,UserPlus,Video, X, GraduationCap, MapPin, Clock3, ArrowUpRight, Hash, Camera, CheckCheck, Phone, Smile, Paperclip, Mic, Globe2, Sun, LogOut, Moon, ThumbsUp, ChartNoAxesColumnIncreasing, MessageSquareText, ChevronLeft, ExternalLink, Briefcase, CirclePlus, BellRing, Phone as PhoneIcon, Video as VideoIcon, Info as InfoIcon} from "lucide-react";
 import {Person,FeedPost,UniversityGroup,Opportunity} from "../data/mock";
 import {ActivityNotification,ChatConversation,ChatMessage,EventRecord,PostComment,PublicProfile,applyForOpportunity,createConversation,deletePost,fetchConversationMessages,fetchFollowedProfileIds,fetchConnectionCount,fetchConnectionStatuses,fetchMyConnections,fetchGroupMembershipNames,fetchMyApplicationOpportunityIds,fetchMyConversations,fetchNotifications,fetchPostComments,fetchPostLikeIds,fetchPosts,fetchPublicProfile,fetchRegisteredEventIds,fetchSavedGroupIds,fetchSavedOpportunityIds,fetchSavedPostIds,fetchUniversityEvents,fetchUniversityGroups,fetchUniversityOpportunities,fetchUniversityPeople,insertComment,insertMessage,insertPost,insertUniversityGroup,markNotificationsRead,NUB_UNIVERSITY_ID,registerForEvent,respondToConnectionRequest,removeConnection,sendConnectionRequest,setFollow,setGroupMembership,setGroupSaved,setOpportunitySaved,setPostLike,setPostSaved,updatePost} from "../lib/supabase/data";
 import {createClient} from "../lib/supabase/client";
@@ -14,6 +14,49 @@ function Avatar({person,size="md"}:{person:Person;size?:"sm"|"md"|"lg"}){return 
 function initials(name:string){return name.split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]?.toUpperCase()).join("")||"C"}
 function uniqueAvatar(name:string,id:number){const letters=initials(name);const tone=String((id*37)%28+32);const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="50" fill="hsl(230 5% ${tone}%)"/><circle cx="78" cy="22" r="19" fill="white" opacity=".06"/><text x="50" y="57" text-anchor="middle" dominant-baseline="middle" font-family="Arial,sans-serif" font-size="32" font-weight="700" fill="#f5f5f5">${letters}</text></svg>`;return `data:image/svg+xml,${encodeURIComponent(svg)}`}
 function toggleItem<T extends number|string>(items:T[],setItems:(next:T[])=>void,item:T){setItems(items.includes(item)?items.filter(value=>value!==item):[...items,item])}
+
+function formatChatTime(value: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const msgDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  if (msgDay === startOfDay) return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (msgDay === startOfDay - 86400000) return "Yesterday";
+  return date.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function dayKey(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function dayLabel(iso: string) {
+  const d = new Date(iso);
+  const now = new Date();
+  const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
+  if (d.toDateString() === now.toDateString()) return "Today";
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return d.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+}
+
+function groupMessagesByDay(messages: ChatMessage[]) {
+  const groups: ChatMessage[][] = [];
+  let current: ChatMessage[] = [];
+  let currentKey = "";
+  for (const m of messages) {
+    const key = dayKey(m.created_at);
+    if (key !== currentKey) {
+      if (current.length) groups.push(current);
+      current = [m];
+      currentKey = key;
+    } else {
+      current.push(m);
+    }
+  }
+  if (current.length) groups.push(current);
+  return groups;
+}
 function App(){
  const [page,setPage]=useState<Page>("Home"),[tab,setTab]=useState("My university"),[query,setQuery]=useState(""),[liked,setLiked]=useState<(number|string)[]>([]),[saved,setSaved]=useState<(number|string)[]>([]),[followed,setFollowed]=useState<(number|string)[]>([]),[joined,setJoined]=useState<string[]>([]),[modal,setModal]=useState(""),[toast,setToast]=useState(""),[message,setMessage]=useState(""),[dark,setDark]=useState(true),[mobileMenu,setMobileMenu]=useState(false),[filter,setFilter]=useState("All");
  const [backendPosts,setBackendPosts]=useState<FeedPost[]|null>(null),[backendGroups,setBackendGroups]=useState<UniversityGroup[]|null>(null),[backendOpportunities,setBackendOpportunities]=useState<Opportunity[]|null>(null),[backendEvents,setBackendEvents]=useState<EventRecord[]|null>(null),[backendPeople,setBackendPeople]=useState<Person[]|null>(null),[authenticated,setAuthenticated]=useState(false),[currentProfileId,setCurrentProfileId]=useState<string|null>(null),[currentAccount,setCurrentAccount]=useState<Person>(demoAccount),[currentUniversityId,setCurrentUniversityId]=useState<string|null>(null),[currentUniversityName,setCurrentUniversityName]=useState<string>("");
