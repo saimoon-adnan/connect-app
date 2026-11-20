@@ -342,3 +342,212 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .app-shell:not(.x) .messages-shell .chat-day-label{align-self:center;margin:2px 0 6px;padding:6px 16px;border-radius:999px;font-size:12px;color:var(--gl-sub);background:var(--gl-in);border:1px solid var(--gl-line)}
 .app-shell:not(.x) .messages-shell .bubble-text{display:block}
 .app-shell:not(.x) .messages-shell .bubble-time{display:block;margin-top:8px;text-align:right;font-size:11px;line-height:1;opacity:.65;color:inherit}
+
+/* ==========================================================================
+   Glass FEED (stories, tabs, composer, posts, events, right rail) + mobile-app sizes
+   Scope: only while the Feed page is open (it is the only page with .feed-layout).
+   ========================================================================== */
+
+/* ---- background (same neutral greys as Messages) ---- */
+.app-shell:not(.dark):not(.x):has(.feed-layout){background:
+  radial-gradient(520px 420px at 8% 4%,rgba(0,0,0,.09),transparent 70%),
+  radial-gradient(480px 400px at 96% 26%,rgba(0,0,0,.07),transparent 70%),
+  radial-gradient(560px 460px at 20% 62%,rgba(0,0,0,.06),transparent 70%),
+  radial-gradient(560px 460px at 90% 96%,rgba(0,0,0,.08),transparent 70%),
+  #f1f1f0}
+.app-shell.dark:not(.x):has(.feed-layout){background:
+  radial-gradient(480px 380px at 10% 6%,rgba(255,255,255,.07),transparent 70%),
+  radial-gradient(460px 380px at 94% 30%,rgba(255,255,255,.05),transparent 70%),
+  radial-gradient(500px 400px at 20% 66%,rgba(255,255,255,.04),transparent 70%),
+  radial-gradient(ellipse at 50% 0%,#222329 0,#141519 40%,#101114 80%)}
+
+/* ---- tokens (the app's original ink / charcoal, made translucent) ---- */
+.app-shell:not(.dark):not(.x):has(.feed-layout){--gl-card:rgba(255,255,255,.58);--gl-line:rgba(255,255,255,.80);--gl-ink:#222;--gl-sub:#707070;--gl-in:rgba(255,255,255,.66);--gl-btn:#222;--gl-btn-ink:#fff;--gl-shadow:0 8px 30px rgba(0,0,0,.09)}
+.app-shell.dark:not(.x):has(.feed-layout){--gl-card:rgba(28,29,34,.55);--gl-line:rgba(255,255,255,.13);--gl-ink:#f4f4f5;--gl-sub:#a1a1aa;--gl-in:rgba(255,255,255,.09);--gl-btn:#f2f2f2;--gl-btn-ink:#161619;--gl-shadow:0 8px 30px rgba(0,0,0,.40)}
+
+/* ---- glass surfaces ---- */
+.app-shell:not(.x):has(.feed-layout) .stories,
+.app-shell:not(.x):has(.feed-layout) .card.composer,
+.app-shell:not(.x):has(.feed-layout) .card.post,
+.app-shell:not(.x):has(.feed-layout) .card.empty-state,
+.app-shell:not(.x):has(.feed-layout) .rail-card{background:var(--gl-card);border:1px solid var(--gl-line);border-radius:24px;box-shadow:var(--gl-shadow);color:var(--gl-ink);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%)}
+
+/* ---- page heading ---- */
+.app-shell:not(.x):has(.feed-layout) .page-title-row h1{color:var(--gl-ink)}
+.app-shell:not(.x):has(.feed-layout) .page-subtitle,.app-shell:not(.x):has(.feed-layout) .eyebrow{color:var(--gl-sub)}
+
+/* ---- stories ---- */
+.app-shell:not(.x):has(.feed-layout) .stories{padding:16px 18px;margin-bottom:16px}
+.app-shell:not(.x):has(.feed-layout) .stories-head b,.app-shell:not(.x):has(.feed-layout) .rail-heading>b{font-size:15px;font-weight:600;color:var(--gl-ink)}
+.app-shell:not(.x):has(.feed-layout) .stories-head>span,.app-shell:not(.x):has(.feed-layout) .story-empty{font-size:13px;color:var(--gl-sub)}
+.app-shell:not(.x):has(.feed-layout) .story{font-size:12px;min-width:64px;color:var(--gl-sub)}
+.app-shell:not(.x):has(.feed-layout) .story-ring{width:62px;height:62px}
+.app-shell:not(.x):has(.feed-layout) .story-ring .avatar,.app-shell:not(.x):has(.feed-layout) .story-ring img{width:54px;height:54px}
+
+/* ---- tabs (My university / For you / Events) ---- */
+.app-shell:not(.x):has(.feed-layout) .feed-tabs{height:50px;background:transparent;border-bottom:1px solid var(--gl-line);margin-bottom:16px}
+.app-shell:not(.x):has(.feed-layout) .tab-list{gap:8px}
+.app-shell:not(.x):has(.feed-layout) .tab-list button{font-size:15px;min-height:44px;padding:0 14px;color:var(--gl-sub)}
+.app-shell:not(.x):has(.feed-layout) .tab-list button.active{color:var(--gl-ink);font-weight:700}
+.app-shell:not(.x):has(.feed-layout) .tab-list button.active:after{height:3px;background:var(--gl-ink)}
+
+/* ---- composer + university chip ---- */
+.app-shell:not(.x):has(.feed-layout) .feed-column{gap:16px;padding-bottom:28px}
+.app-shell:not(.x):has(.feed-layout) .card.composer{min-height:60px;padding:12px 18px;gap:14px;font-size:15px;color:var(--gl-sub)}
+.app-shell:not(.x):has(.feed-layout) .card.composer>span{font-size:15px;color:var(--gl-sub)}
+.app-shell:not(.x):has(.feed-layout) .card.composer>svg{width:22px;height:22px;color:var(--gl-sub)}
+.app-shell:not(.x):has(.feed-layout) .university-chip{padding:10px 16px;border-radius:999px;background:var(--gl-in);border:1px solid var(--gl-line);font-size:13px;color:var(--gl-sub);align-self:start;width:fit-content;max-width:100%}
+.app-shell:not(.x):has(.feed-layout) .university-chip b{color:var(--gl-ink)}
+
+/* ---- post cards ---- */
+.app-shell:not(.x):has(.feed-layout) .card.post{padding:18px 18px 0}
+.app-shell:not(.x):has(.feed-layout) .post-head{gap:12px}
+.app-shell:not(.x):has(.feed-layout) .post-head .avatar{width:44px;height:44px}
+.app-shell:not(.x):has(.feed-layout) .post-head b,.app-shell:not(.x):has(.feed-layout) .post-head .text-link{font-size:15px;font-weight:600;color:var(--gl-ink)}
+.app-shell:not(.x):has(.feed-layout) .post-head .muted{font-size:13px;color:var(--gl-sub)}
+.app-shell:not(.x):has(.feed-layout) .post-head .icon-btn{width:44px;height:44px;flex:none;border-radius:50%;color:var(--gl-sub)}
+.app-shell:not(.x):has(.feed-layout) .post-copy{font-size:16px;line-height:1.55;margin:14px 0;color:var(--gl-ink)}
+.app-shell:not(.x):has(.feed-layout) .post-image{width:calc(100% + 36px);margin-left:-18px;max-height:340px;border-radius:0}
+.app-shell:not(.x):has(.feed-layout) .post-meta{height:auto;min-height:44px;padding:8px 0;gap:14px;font-size:13px;color:var(--gl-sub);border-bottom:1px solid var(--gl-line)}
+.app-shell:not(.x):has(.feed-layout) .post-meta button{font-size:13px;color:var(--gl-sub)}
+.app-shell:not(.x):has(.feed-layout) .post-meta>span:last-child{font-size:12px;padding:4px 12px;border:1px solid var(--gl-line);border-radius:999px;background:var(--gl-in)}
+.app-shell:not(.x):has(.feed-layout) .post-actions{height:56px;gap:4px;padding:6px 0}
+.app-shell:not(.x):has(.feed-layout) .post-actions button{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border-radius:14px;font-size:14px;font-weight:500;color:var(--gl-sub)}
+.app-shell:not(.x):has(.feed-layout) .post-actions button svg{width:20px;height:20px}
+.app-shell:not(.x):has(.feed-layout) .post-actions button:hover{background:var(--gl-in)}
+.app-shell:not(.x):has(.feed-layout) .post-actions button.selected{color:var(--gl-ink);font-weight:600}
+.app-shell:not(.x):has(.feed-layout) .post-actions .save-action{flex:none;width:52px}
+
+/* ---- events inside the Events tab ---- */
+.app-shell:not(.x):has(.feed-layout) .event-mini{gap:14px;margin-top:0}
+.app-shell:not(.x):has(.feed-layout) .event-mini>div b{font-size:16px;font-weight:600;color:var(--gl-ink)}
+.app-shell:not(.x):has(.feed-layout) .event-mini small{font-size:13px;color:var(--gl-sub)}
+.app-shell:not(.x):has(.feed-layout) .event-mini>span b{font-size:14px;color:var(--gl-ink)}
+
+/* ---- empty states ---- */
+.app-shell:not(.x):has(.feed-layout) .card.empty-state{padding:22px;font-size:15px;line-height:1.55;color:var(--gl-sub)}
+
+/* ---- right rail (people + university card) ---- */
+.app-shell:not(.x):has(.feed-layout) .right-rail{gap:16px}
+.app-shell:not(.x):has(.feed-layout) .rail-card{padding:18px}
+.app-shell:not(.x):has(.feed-layout) .campus-card{background:var(--gl-card)}
+.app-shell:not(.x):has(.feed-layout) .campus-card h3{font-size:18px;color:var(--gl-ink)}
+.app-shell:not(.x):has(.feed-layout) .campus-card>p,.app-shell:not(.x):has(.feed-layout) .suggestion small{font-size:13px;line-height:1.5;color:var(--gl-sub)}
+.app-shell:not(.x):has(.feed-layout) .campus-link,.app-shell:not(.x):has(.feed-layout) .rail-heading>button{font-size:14px;min-height:44px;color:var(--gl-ink)}
+.app-shell:not(.x):has(.feed-layout) .suggestion{gap:12px;margin-top:14px}
+.app-shell:not(.x):has(.feed-layout) .suggestion b{font-size:15px;color:var(--gl-ink)}
+.app-shell:not(.x):has(.feed-layout) .suggestion .avatar{width:40px;height:40px}
+.app-shell:not(.x):has(.feed-layout) .connect-mini{width:40px;height:40px;border-radius:50%;background:var(--gl-in);border:1px solid var(--gl-line);color:var(--gl-ink);flex:none}
+
+/* ---- buttons (44px tap targets; the round "+" Create post button is left alone) ---- */
+.app-shell:not(.x):has(.feed-layout) .button:not(.create-top){min-height:44px;padding:0 18px;border-radius:14px;font-size:15px;font-weight:600}
+.app-shell:not(.x):has(.feed-layout) .button-light:not(.create-top){background:var(--gl-in);border:1px solid var(--gl-line);color:var(--gl-ink);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.app-shell:not(.x):has(.feed-layout) .button-dark:not(.create-top){background:var(--gl-btn);color:var(--gl-btn-ink);border:0}
+.app-shell:not(.x):has(.feed-layout) .create-top{min-width:44px;min-height:44px;border-radius:14px}
+
+/* ---- phones: slightly lighter blur (battery/speed) and tighter side padding ---- */
+@media(max-width:820px){
+  .app-shell:not(.x):has(.feed-layout) .stories,
+  .app-shell:not(.x):has(.feed-layout) .card.composer,
+  .app-shell:not(.x):has(.feed-layout) .card.post,
+  .app-shell:not(.x):has(.feed-layout) .card.empty-state,
+  .app-shell:not(.x):has(.feed-layout) .rail-card{-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%)}
+  .app-shell:not(.x):has(.feed-layout) .page-title-row h1{font-size:26px}
+  .app-shell:not(.x):has(.feed-layout) .page-subtitle{font-size:14px}
+  .app-shell:not(.x):has(.feed-layout) .eyebrow{font-size:11px}
+}
+@media(max-width:380px){
+  .app-shell:not(.x):has(.feed-layout) .card.post{padding:16px 14px 0}
+  .app-shell:not(.x):has(.feed-layout) .post-image{width:calc(100% + 28px);margin-left:-14px}
+  .app-shell:not(.x):has(.feed-layout) .tab-list button{padding:0 10px;font-size:14px}
+}
+
+/* ---- no blur support / reduced transparency: solid readable surfaces ---- */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .app-shell:not(.dark):not(.x):has(.feed-layout){--gl-card:rgba(255,255,255,.94)}
+  .app-shell.dark:not(.x):has(.feed-layout){--gl-card:rgba(28,29,34,.95)}
+}
+@media(prefers-reduced-transparency:reduce){
+  .app-shell:not(.dark):not(.x):has(.feed-layout){--gl-card:rgba(255,255,255,.96)}
+  .app-shell.dark:not(.x):has(.feed-layout){--gl-card:rgba(28,29,34,.97)}
+}
+
+/* ==========================================================================
+   Glass MODALS (Create post, Edit post, Comments, Connections, ...) + emoji picker
+   The modal is rendered inside .app-shell, so the theme classes still apply.
+   ========================================================================== */
+.app-shell:not(.dark):not(.x) .modal{--gl-card:rgba(255,255,255,.66);--gl-line:rgba(255,255,255,.85);--gl-ink:#222;--gl-sub:#707070;--gl-in:rgba(255,255,255,.72);--gl-btn:#222;--gl-btn-ink:#fff}
+.app-shell.dark:not(.x) .modal{--gl-card:rgba(28,29,34,.66);--gl-line:rgba(255,255,255,.14);--gl-ink:#f4f4f5;--gl-sub:#a1a1aa;--gl-in:rgba(255,255,255,.09);--gl-btn:#f2f2f2;--gl-btn-ink:#161619}
+
+.app-shell:not(.x) .modal-backdrop{background:rgba(10,10,14,.38);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.app-shell:not(.x) .modal{width:min(520px,100%);max-height:88dvh;overflow-y:auto;padding:22px;background:var(--gl-card);border:1px solid var(--gl-line);border-radius:28px;box-shadow:0 24px 80px rgba(0,0,0,.35);color:var(--gl-ink);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%)}
+
+/* header */
+.app-shell:not(.x) .modal .modal-head{border-bottom:1px solid var(--gl-line);padding-bottom:14px;margin-bottom:16px}
+.app-shell:not(.x) .modal .modal-head h2{font-size:20px;font-weight:700;color:var(--gl-ink)}
+.app-shell:not(.x) .modal .modal-head .eyebrow{font-size:11px;color:var(--gl-sub)}
+.app-shell:not(.x) .modal .modal-head .icon-btn{width:44px;height:44px;border-radius:50%;background:var(--gl-in);border:1px solid var(--gl-line);color:var(--gl-ink)}
+.app-shell:not(.x) .modal .modal-description{font-size:15px;line-height:1.6;color:var(--gl-sub)}
+
+/* text fields */
+.app-shell:not(.x) .modal .post-textarea,
+.app-shell:not(.x) .modal .form-label textarea,
+.app-shell:not(.x) .modal .form-label input,
+.app-shell:not(.x) .modal .form-label select{background:var(--gl-in);border:1px solid var(--gl-line);border-radius:18px;padding:14px 16px;font-size:16px;color:var(--gl-ink);box-shadow:none}
+.app-shell:not(.x) .modal .post-textarea{min-height:140px;resize:none}
+.app-shell:not(.x) .modal .form-label{font-size:14px;font-weight:600;color:var(--gl-sub);gap:8px;margin:14px 0}
+.app-shell:not(.x) .modal .form-label select{height:48px;padding:0 14px}
+.app-shell:not(.x) .modal .post-textarea::placeholder,
+.app-shell:not(.x) .modal .form-label input::placeholder,
+.app-shell:not(.x) .modal .form-label textarea::placeholder{color:var(--gl-sub);font-size:15px}
+.app-shell:not(.x) .modal .file-name{font-size:13px;color:var(--gl-sub)}
+
+/* photo / audience / emoji row */
+.app-shell:not(.x) .modal .modal-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0}
+.app-shell:not(.x) .modal .modal-tools>button,.app-shell:not(.x) .modal .post-image-picker{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;background:var(--gl-in);border:1px solid var(--gl-line);color:var(--gl-ink);font-size:14px;font-weight:500}
+
+/* footer + buttons */
+.app-shell:not(.x) .modal .modal-foot{border-top:1px solid var(--gl-line);padding-top:14px;margin-top:14px;gap:12px;font-size:13px;color:var(--gl-sub)}
+.app-shell:not(.x) .modal .modal-foot b{color:var(--gl-ink)}
+.app-shell:not(.x) .modal .button{min-height:46px;padding:0 20px;border-radius:14px;font-size:15px;font-weight:600}
+.app-shell:not(.x) .modal .button-dark{background:var(--gl-btn);color:var(--gl-btn-ink);border:0}
+.app-shell:not(.x) .modal .button-light{background:var(--gl-in);border:1px solid var(--gl-line);color:var(--gl-ink)}
+.app-shell:not(.x) .modal .button:disabled{opacity:.45}
+
+/* comments */
+.app-shell:not(.x) .modal .comment-list{max-height:min(48dvh,420px);overflow-y:auto;gap:18px;padding-right:2px}
+.app-shell:not(.x) .modal .comment-list>div{display:flex;align-items:flex-start;gap:12px}
+.app-shell:not(.x) .modal .comment-list .avatar{width:40px;height:40px;flex:none}
+.app-shell:not(.x) .modal .comment-list b{font-size:15px;font-weight:600;color:var(--gl-ink)}
+.app-shell:not(.x) .modal .comment-list small{display:block;font-size:15px;line-height:1.5;color:var(--gl-ink);opacity:.88}
+.app-shell:not(.x) .modal .comment-list .muted{font-size:15px;color:var(--gl-sub)}
+.app-shell:not(.x) .modal .comment-compose{flex-wrap:wrap;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--gl-line)}
+.app-shell:not(.x) .modal .comment-compose input{flex:1;min-width:0;height:48px;padding:0 18px;border-radius:999px;background:var(--gl-in);border:1px solid var(--gl-line);color:var(--gl-ink);font-size:16px;outline:0}
+.app-shell:not(.x) .modal .comment-compose input::placeholder{color:var(--gl-sub);font-size:15px}
+.app-shell:not(.x) .modal .comment-compose .send-button{flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:var(--gl-btn);color:var(--gl-btn-ink);border:0}
+.app-shell:not(.x) .modal .comment-compose .send-button:disabled{opacity:.4}
+
+/* connections list modal rows */
+.app-shell:not(.x) .modal .comment-row{display:flex;align-items:center;gap:12px}
+.app-shell:not(.x) .modal .comment-row b{font-size:15px;color:var(--gl-ink)}
+.app-shell:not(.x) .modal .comment-row small{font-size:13px;color:var(--gl-sub)}
+
+/* emoji picker (button + panel) */
+.emoji-btn{width:44px;height:44px;flex:none;display:inline-grid;place-items:center;border-radius:50%;background:var(--gl-in,rgba(127,127,127,.15));border:1px solid var(--gl-line,rgba(127,127,127,.25));color:var(--gl-ink,inherit)}
+.emoji-panel{flex:0 0 100%;display:grid;grid-template-columns:repeat(8,1fr);gap:4px;max-height:184px;overflow-y:auto;padding:10px;border-radius:20px;background:var(--gl-in,rgba(127,127,127,.15));border:1px solid var(--gl-line,rgba(127,127,127,.25))}
+.emoji-panel button{min-height:42px;border-radius:12px;font-size:24px;line-height:1;background:transparent;border:0}
+.emoji-panel button:hover,.emoji-panel button:active{background:var(--gl-in,rgba(127,127,127,.2))}
+.modal-tools .emoji-panel{order:99}
+.comment-compose .emoji-panel{order:-1}
+
+/* phones: modals become bottom sheets */
+@media(max-width:600px){
+  .app-shell:not(.x) .modal{width:100%;max-height:90dvh;border-radius:28px 28px 0 0;border-bottom:0;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px));-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%)}
+  .app-shell:not(.x) .modal .modal-foot{flex-direction:column;align-items:stretch}
+  .app-shell:not(.x) .modal .modal-foot .button{width:100%;justify-content:center}
+  .emoji-panel{grid-template-columns:repeat(7,1fr)}
+}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .app-shell:not(.dark):not(.x) .modal{--gl-card:rgba(255,255,255,.97)}
+  .app-shell.dark:not(.x) .modal{--gl-card:rgba(28,29,34,.98)}
+}
