@@ -79,7 +79,7 @@ body,.app-shell{background:#101114;color:#f2f2f3}.app-shell{background:radial-gr
 .app-shell:not(.dark) .company-name,.app-shell:not(.dark) .profile-section-head h3,.app-shell:not(.dark) .post-section-head h3{color:#333}
 .app-shell:not(.dark) .type-tag{background:#e9e9e8;color:#555}
 .app-shell:not(.dark) .opportunity-detail,.app-shell:not(.dark) .opportunity-description{color:#777}
-.app-shell:not(.dark) .messages-shell{background:#f9f9f8;border-color:#dededd}
+.app-shell:not(.dark) .messages-shell{background:transparent;border:1px solid rgba(255,255,255,0.14);backdrop-filter:blur(12px) saturate(160%)}
 .app-shell:not(.dark) .inbox-head h2,.app-shell:not(.dark) .conversation-copy b,.app-shell:not(.dark) .chat-head .grow b{color:#222}
 .app-shell:not(.dark) .inbox-head p,.app-shell:not(.dark) .conversation-copy small,.app-shell:not(.dark) .conversation-time,.app-shell:not(.dark) .chat-head .grow small{color:#777}
 .app-shell:not(.dark) .inbox-tabs button{color:#777}
