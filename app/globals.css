@@ -551,3 +551,33 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .app-shell:not(.dark):not(.x) .modal{--gl-card:rgba(255,255,255,.97)}
   .app-shell.dark:not(.x) .modal{--gl-card:rgba(28,29,34,.98)}
 }
+
+/* ==========================================================================
+   Fixes: post image gap, light-mode comment popup, reaction bar (hold / hover "Like")
+   ========================================================================== */
+
+/* post image: a global img{max-width:100%} was capping the width and leaving a gap on the right */
+.post-image{max-width:none}
+.app-shell:not(.x):has(.feed-layout) .post-image{max-width:none}
+
+/* popup header: it was inheriting the translucent popup colour and showed as a lighter box */
+.app-shell:not(.x) .modal .modal-head{position:static;background:transparent}
+
+/* light mode: whiter popup and a softer dim behind it (it looked grey) */
+.app-shell:not(.dark):not(.x) .modal{--gl-card:rgba(255,255,255,.90);--gl-in:rgba(255,255,255,.95);--gl-line:rgba(0,0,0,.08)}
+.app-shell:not(.dark):not(.x) .modal-backdrop{background:rgba(24,26,34,.30)}
+
+/* reaction bar */
+.app-shell:not(.x) .post-actions{overflow:visible}
+.post-actions .react-wrap{position:relative;flex:1;display:flex}
+.post-actions .react-wrap>button{flex:1}
+.react-bar{position:absolute;left:0;bottom:100%;padding-bottom:10px;z-index:40;animation:reactpop .14s ease-out}
+.react-pill{display:flex;gap:2px;padding:6px 8px;border-radius:999px;-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);box-shadow:0 12px 36px rgba(0,0,0,.28)}
+.app-shell:not(.dark) .react-pill{background:rgba(255,255,255,.94);border:1px solid rgba(0,0,0,.08)}
+.app-shell.dark .react-pill{background:rgba(38,39,45,.94);border:1px solid rgba(255,255,255,.14)}
+.app-shell:not(.x):not(.y) .post-actions .react-wrap .react-bar button{flex:none;width:44px;height:44px;min-height:44px;padding:0;display:grid;place-items:center;border-radius:50%;font-size:26px;line-height:1;background:transparent;border:0;transition:transform .12s ease}
+.app-shell:not(.x):not(.y) .post-actions .react-wrap .react-bar button:hover,
+.app-shell:not(.x):not(.y) .post-actions .react-wrap .react-bar button:active{transform:translateY(-5px) scale(1.25);background:transparent}
+.react-emoji{font-size:18px;line-height:1}
+.react-dot{display:inline-grid;place-items:center;width:20px;height:20px;font-size:14px;line-height:1}
+@keyframes reactpop{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:none}}
