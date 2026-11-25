@@ -186,9 +186,9 @@ useEffect(()=>{if(!currentProfileId)return;let active=true;fetchConnectionStatus
      supabase.auth.getSession().then(({data})=>{
          if(!data.session){
              const hasAccount=localStorage.getItem("connect_has_account")==="1";
-             window.location.replace(hasAccount?"/login/":"/login/?mode=signup");
+             window.location.replace((Capacitor.isNativePlatform()?"/login/index.html":"/login/")+(hasAccount?"":"?mode=signup"));
          }else setAuthChecked(true);
-     });
+     }).catch(()=>{window.location.replace(Capacitor.isNativePlatform()?"/login/index.html":"/login/")});
   },[]);
 
  const notify=(s:string)=>{setToast(s);setTimeout(()=>setToast(""),2300)};
