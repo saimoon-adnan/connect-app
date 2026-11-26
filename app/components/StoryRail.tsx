@@ -56,6 +56,19 @@ export default function StoryRail({ profileId, account, authenticated, onNotice,
   const activeStories = selectedAuthor ? groupedStories.get(selectedAuthor) ?? [] : [];
   const activeStory = activeStories[selectedIndex];
 
+  const authorOrder = [...(ownStories.length && profileId ? [profileId] : []), ...otherAuthors.map(([id]) => id)];
+  function openAuthor(id: string) { const rows = groupedStories.get(id); if (!rows) return; markSeen(id, rows); setSelectedAuthor(id); setSelectedIndex(0); }
+  function goNext() {
+    if (selectedIndex < activeStories.length - 1) { setSelectedIndex(selectedIndex + 1); return; }
+    const at = selectedAuthor ? authorOrder.indexOf(selectedAuthor) : -1;
+    if (at >= 0 && at < authorOrder.length - 1) openAuthor(authorOrder[at + 1]); else setSelectedAuthor(null);
+  }
+  function goPrev() {
+    if (selectedIndex > 0) { setSelectedIndex(selectedIndex - 1); return; }
+    const at = selectedAuthor ? authorOrder.indexOf(selectedAuthor) : -1;
+    if (at > 0) openAuthor(authorOrder[at - 1]);
+  }
+
   async function uploadStory(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -122,8 +135,10 @@ export default function StoryRail({ profileId, account, authenticated, onNotice,
           <button aria-label="Close story" onClick={() => setSelectedAuthor(null)}><X size={19}/></button>
         </header>
         <img className="story-viewer-image" src={activeStory.imageUrl} alt={`${activeStory.author.name}'s campus story`}/>
-        <button className="story-viewer-prev" aria-label="Previous story" disabled={selectedIndex === 0} onClick={() => setSelectedIndex(index => Math.max(0, index - 1))}><ChevronLeft/></button>
-        <button className="story-viewer-next" aria-label="Next story" disabled={selectedIndex >= activeStories.length - 1} onClick={() => setSelectedIndex(index => Math.min(activeStories.length - 1, index + 1))}><ChevronRight/></button>
+        <button className="story-tap story-tap-prev" aria-label="Previous story" onClick={goPrev}/>
+        <button className="story-tap story-tap-next" aria-label="Next story" onClick={goNext}/>
+        <button className="story-viewer-prev" aria-label="Previous story" onClick={goPrev}><ChevronLeft/></button>
+        <button className="story-viewer-next" aria-label="Next story" onClick={goNext}><ChevronRight/></button>
         <footer>Expires {new Date(activeStory.expiresAt).toLocaleString()}</footer>
       </section>
     </div>, document.body)}

@@ -1036,3 +1036,18 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .app-shell:not(.x) .messages-shell .chat-panel>.chat-content>.chat-back{align-self:flex-start;flex:none}
 .story-viewer-backdrop{position:fixed;inset:0;z-index:200}
 body:has(.story-viewer-backdrop) .mobile-bottom-nav{display:none!important}
+
+/* ===== story viewer: tap zones + status-bar safe area ===== */
+.story-tap{position:absolute;z-index:1;top:92px;bottom:56px;background:transparent;border:0;padding:0;-webkit-tap-highlight-color:transparent}
+.story-tap-prev{left:0;width:35%}
+.story-tap-next{right:0;width:65%}
+.story-viewer-prev,.story-viewer-next{z-index:2}
+.story-viewer header,.story-viewer-footer,.story-viewer footer{z-index:3}
+.story-viewer header button{z-index:4;position:relative}
+@media(max-width:600px){
+  .story-viewer-prev,.story-viewer-next{display:none}
+  .story-viewer .story-progress{top:calc(10px + max(env(safe-area-inset-top,0px),28px))}
+  .story-viewer header{top:calc(20px + max(env(safe-area-inset-top,0px),28px))}
+  .story-tap{top:calc(92px + max(env(safe-area-inset-top,0px),28px))}
+  .story-viewer footer{padding-bottom:calc(11px + env(safe-area-inset-bottom,0px))}
+}
