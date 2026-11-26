@@ -988,3 +988,49 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .app-shell:not(.x) .main-content,.app-shell:not(.x) .sidebar.show-mobile,.app-shell:not(.x) .mobile-drawer-scrim{animation:none}
   .app-shell:not(.x) .nav-item,.app-shell:not(.x) .profile-mini{transition:none}
 }
+
+/* ===== story rail: instagram-style circles (ig-*) ===== */
+.app-shell:not(.x) .stories-row{display:flex;gap:14px;padding:6px 2px 8px;overflow-x:auto;scrollbar-width:none;align-items:flex-start}
+.app-shell:not(.x) .stories-row::-webkit-scrollbar{display:none}
+.ig-item{display:flex;flex-direction:column;align-items:center;gap:7px;width:78px;min-width:78px;flex:none}
+.ig-wrap{position:relative;width:74px;height:74px}
+.ig-ring{display:block;width:74px;height:74px;padding:3px;border:0;border-radius:50%;background:linear-gradient(135deg,#1f2024 0%,#6b6c73 55%,#1f2024 100%);transition:transform .18s ease}
+.ig-ring:active{transform:scale(.94)}
+.ig-ring img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;background:#2a2b30;border:3px solid var(--ig-gap,#f4f4f3);box-sizing:border-box}
+.ig-ring.is-seen,.ig-ring.ig-none{background:rgba(128,128,128,.45)}
+.ig-plus{position:absolute;right:-2px;bottom:-2px;width:24px;height:24px;padding:0;border:2px solid var(--ig-gap,#f4f4f3);border-radius:50%;display:grid;place-items:center;background:#1f2024;color:#fff;line-height:0}
+.ig-plus:disabled{opacity:.6}
+.ig-name{max-width:78px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500;color:var(--sh-ink,#222)}
+.ig-ring.is-seen+.ig-plus{opacity:1}
+.app-shell:not(.x){--ig-gap:#f4f4f3}
+.app-shell.dark:not(.x){--ig-gap:#18191d}
+.app-shell.dark:not(.x) .ig-ring{background:linear-gradient(135deg,#ffffff 0%,#8b8c93 55%,#ffffff 100%)}
+.app-shell.dark:not(.x) .ig-ring.is-seen,.app-shell.dark:not(.x) .ig-ring.ig-none{background:rgba(255,255,255,.22)}
+.app-shell.dark:not(.x) .ig-plus{background:#f4f4f5;color:#18191d}
+
+/* ===== notifications ===== */
+.app-shell:not(.x){--nt-bg:rgba(255,255,255,.72);--nt-bg-un:rgba(255,255,255,.95);--nt-line:rgba(0,0,0,.07);--nt-ink:#222;--nt-sub:#6b6b70}
+.app-shell.dark:not(.x){--nt-bg:rgba(30,31,36,.78);--nt-bg-un:rgba(42,43,50,.92);--nt-line:rgba(255,255,255,.10);--nt-ink:#f4f4f5;--nt-sub:#a1a1aa}
+.app-shell:not(.x) .notification-list{display:grid;gap:10px}
+.app-shell:not(.x) .notification-row{margin:0;padding:14px;gap:12px;border-radius:18px;background:var(--nt-bg);border:1px solid var(--nt-line);box-shadow:0 4px 16px rgba(0,0,0,.05);color:var(--nt-ink);transition:background-color .2s ease,transform .18s ease}
+.app-shell:not(.x) .notification-row.unread{background:var(--nt-bg-un);box-shadow:inset 3px 0 0 var(--nt-ink),0 4px 16px rgba(0,0,0,.07)}
+.app-shell:not(.x) .notification-copy p{font-size:14px;line-height:1.45;margin:0 0 3px;color:var(--nt-sub)}
+.app-shell:not(.x) .notification-copy p b{color:var(--nt-ink);font-weight:600}
+.app-shell:not(.x) .notification-copy>small{font-size:12px;color:var(--nt-sub);opacity:.85}
+.app-shell:not(.x) .notification-icon{width:24px;height:24px;margin:-2px 0 0 -22px;border:2px solid var(--ig-gap,#f4f4f3);background:#e8e8e6;color:#333}
+.app-shell:not(.x) .notification-icon[data-kind="post_like"]{background:#f6e3e2;color:#9a4a44}
+.app-shell:not(.x) .notification-icon[data-kind="post_comment"]{background:#e2eaee;color:#3f6070}
+.app-shell.dark:not(.x) .notification-icon{background:#33343a;color:#eee;border-color:#18191d}
+.app-shell:not(.x) .notification-copy>.request-buttons{display:flex;gap:8px;margin-top:10px}
+.app-shell:not(.x) .notification-copy>.request-buttons .button{height:40px;min-width:92px;font-size:14px;margin:0;border-radius:999px}
+.app-shell:not(.x) .notification-more{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;color:var(--nt-sub);background:transparent;border:1px solid var(--nt-line)}
+.app-shell:not(.x) .notification-more:hover{background:var(--nt-line);color:var(--nt-ink)}
+.app-shell:not(.x) .notification-list .empty-state{text-align:center;padding:36px 16px;color:var(--nt-sub)}
+
+/* ===== messages: empty-state text readable on dark + glass ===== */
+.app-shell:not(.x) .messages-shell .chat-person{color:var(--gl-ink,#222);text-align:center;margin:auto;padding:0 20px}
+.app-shell:not(.x) .messages-shell .chat-person h3{color:var(--gl-ink,#222);font-size:20px;margin:6px 0 0}
+.app-shell:not(.x) .messages-shell .chat-person p{color:var(--gl-sub,#777);font-size:15px;line-height:1.45;margin:0 0 8px}
+.app-shell:not(.x) .messages-shell .chat-person svg{color:var(--gl-sub,#777)}
+.app-shell:not(.x) .messages-shell .chat-person .button{min-height:44px;padding:0 20px;font-size:15px}
+.app-shell:not(.x) .messages-shell .chat-panel>.chat-content>.chat-back{align-self:flex-start;flex:none}
