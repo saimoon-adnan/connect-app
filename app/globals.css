@@ -1120,13 +1120,13 @@ body:has(.story-viewer-backdrop) .mobile-bottom-nav{display:none!important}
 .crop-zoom input{flex:1;accent-color:#f4f4f5;height:32px}
 
 /* ===== profile links ===== */
-.pf-links{display:grid;margin-top:14px;border-top:1px solid var(--nt-line)}
-.pf-link{display:flex;align-items:center;gap:14px;padding:12px 2px;border-bottom:1px solid var(--nt-line);color:var(--nt-ink);text-decoration:none;min-width:0;transition:background-color .2s ease}
-.pf-link:active{background:var(--nt-line)}
-.pf-link-ico{width:46px;height:46px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--nt-line);color:var(--nt-ink)}
-.pf-link-main{display:grid;gap:2px;min-width:0;flex:1}
-.pf-link-main b{font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pf-link-main small{font-size:13px;color:var(--nt-sub)}
-.pf-link-go{flex:none;color:var(--nt-sub)}
+.pf-links{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.pf-link{width:46px;height:46px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--nt-line);color:var(--nt-ink);text-decoration:none;border:1px solid transparent;transition:transform .18s ease,background-color .2s ease}
+.pf-link:hover{border-color:rgba(128,128,128,.4)}
+.pf-link:active{transform:scale(.92)}
 .profile-details .pf-links{margin-top:14px}
 .pf-stats:empty{display:none}
+.pf-signout{width:100%;margin-top:10px;min-height:40px;background:none;border:0;color:var(--nt-sub);font-size:14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+
+/* ===== post photos: show in original proportions, no cropping ===== */
+.app-shell:not(.x) .post-image{height:auto!important;max-height:none!important;object-fit:contain!important}
