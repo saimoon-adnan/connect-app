@@ -978,8 +978,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .app-shell:not(.x) .mobile-bottom-nav button.active{background:var(--sh-active);color:var(--sh-ink)}
 @keyframes sh-drawer{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
 @keyframes sh-fade{from{opacity:0}to{opacity:1}}
-@keyframes sh-page{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.app-shell:not(.x) .main-content{animation:sh-page .28s ease both}
+@keyframes sh-page{from{opacity:0}to{opacity:1}}
+.app-shell:not(.x) .main-content{animation:sh-page .22s ease}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
   .app-shell:not(.dark):not(.x){--sh-bg:rgba(250,250,249,.95)}
   .app-shell.dark:not(.x){--sh-bg:rgba(24,25,29,.96)}
@@ -1034,3 +1034,5 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .app-shell:not(.x) .messages-shell .chat-person svg{color:var(--gl-sub,#777)}
 .app-shell:not(.x) .messages-shell .chat-person .button{min-height:44px;padding:0 20px;font-size:15px}
 .app-shell:not(.x) .messages-shell .chat-panel>.chat-content>.chat-back{align-self:flex-start;flex:none}
+.story-viewer-backdrop{position:fixed;inset:0;z-index:200}
+body:has(.story-viewer-backdrop) .mobile-bottom-nav{display:none!important}

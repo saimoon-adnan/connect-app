@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, LoaderCircle, Plus, Trash2, X } from "lucide-react";
 import { Person } from "../../data/mock";
 import { CampusStory, deleteCampusStory, fetchCampusStories, insertCampusStory } from "../../lib/supabase/data";
@@ -113,7 +114,7 @@ export default function StoryRail({ profileId, account, authenticated, onNotice,
       </div>
       <input ref={inputRef} className="story-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={uploadStory}/>
     </section>
-    {activeStory && <div className="story-viewer-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setSelectedAuthor(null); }}>
+    {activeStory && typeof document !== "undefined" && createPortal(<div className="story-viewer-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setSelectedAuthor(null); }}>
       <section className="story-viewer" aria-label={`${activeStory.author.name}'s story`}>
         <div className="story-progress">{activeStories.map((story, index) => <i key={story.id} className={index <= selectedIndex ? "done" : ""}/>)}</div>
         <header><img src={activeStory.author.avatar} alt=""/><b>{activeStory.author.name}</b><small>{new Date(activeStory.createdAt).toLocaleString()}</small>
@@ -125,6 +126,6 @@ export default function StoryRail({ profileId, account, authenticated, onNotice,
         <button className="story-viewer-next" aria-label="Next story" disabled={selectedIndex >= activeStories.length - 1} onClick={() => setSelectedIndex(index => Math.min(activeStories.length - 1, index + 1))}><ChevronRight/></button>
         <footer>Expires {new Date(activeStory.expiresAt).toLocaleString()}</footer>
       </section>
-    </div>}
+    </div>, document.body)}
   </>;
 }
