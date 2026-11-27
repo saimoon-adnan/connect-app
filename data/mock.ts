@@ -2,7 +2,7 @@
 // still uses the shared types while all visible content comes from Supabase.
 export type Person={id:number,name:string,role:string,school:string,avatar:string,coverUrl?:string,tag?:string,profileId?:string,bio?:string,isRegistered?:boolean,department?:string,studyYear?:string,interests?:string[],universityId?:string};
 export type FeedPost={id:number|string,author:Person,time:string,body:string,image:string,likes:number,comments:number,tag:string,university?:string};
-export type UniversityGroup={id?:string,name:string,members:string,category:string,image:string,description?:string};
+export type UniversityGroup={id?:string,name:string,members:string,category:string,image:string,description?:string,iconUrl?:string,rules?:string,ownerId?:string,createdAt?:string,memberCount?:number};
 export type Opportunity={id?:string,title:string,company:string,type:string,location:string,detail:string,time:string};
 export const people:Person[]=[];
 export const posts:FeedPost[]=[];

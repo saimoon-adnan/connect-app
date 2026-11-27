@@ -57,11 +57,12 @@ function relationCount(value: unknown): number {
   return record.count ?? 0;
 }
 
-export async function fetchPosts(universityId?: string): Promise<FeedPost[]> {
+export async function fetchPosts(universityId?: string, groupId?: string): Promise<FeedPost[]> {
   const supabase = createClient();
-  let request = supabase
-    .from("posts")
-    .select(`
+  const build = (scopeGroups: boolean) => {
+    let request = supabase
+      .from("posts")
+      .select(`
       id, body, image_url, tag, created_at, university_id,
       author:profiles!posts_author_id_fkey(
         id, auth_user_id, display_name, headline, avatar_url,
@@ -70,10 +71,13 @@ export async function fetchPosts(universityId?: string): Promise<FeedPost[]> {
       likes:post_likes(count),
       comments(count)
     `)
-    .order("created_at", { ascending: false });
-
-  if (universityId) request = request.eq("university_id", universityId);
-  const { data, error } = await request;
+      .order("created_at", { ascending: false });
+    if (universityId) request = request.eq("university_id", universityId);
+    if (scopeGroups) request = groupId ? request.eq("group_id", groupId) : request.is("group_id", null);
+    return request;
+  };
+  let { data, error } = await build(true);
+  if (error && !groupId) ({ data, error } = await build(false));
   if (error) throw error;
 
   return (data ?? []).map((row, index) => {
@@ -127,24 +131,32 @@ export async function fetchPublicProfile(profileId: string): Promise<PublicProfi
   return { person, posts };
 }
 
+type GroupRow = { id: string; name: string; description: string; category: string; image_url: string | null; owner_id?: string | null; created_at?: string; icon_url?: string | null; rules?: string | null; members: unknown };
+
 export async function fetchUniversityGroups(universityId = NUB_UNIVERSITY_ID): Promise<UniversityGroup[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("groups")
-    .select("id, name, description, category, image_url, members:group_members(count)")
-    .eq("university_id", universityId)
-    .in("visibility", ["public", "university"])
-    .order("name");
-  if (error) throw error;
+  const base = "id, name, description, category, image_url, owner_id, created_at, members:group_members(count)";
+  const query = (columns: string) => supabase.from("groups").select(columns).eq("university_id", universityId).in("visibility", ["public", "university"]).order("name");
+  let result = await query(`${base}, icon_url, rules`);
+  if (result.error) result = await query(base);
+  if (result.error) throw result.error;
 
-  return (data ?? []).map((group) => ({
-    id: group.id,
-    name: group.name,
-    description: group.description,
-    category: group.category,
-    image: group.image_url ?? "",
-    members: `${relationCount(group.members)} members`,
-  }));
+  return ((result.data ?? []) as unknown as GroupRow[]).map((group) => {
+    const count = relationCount(group.members);
+    return {
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      category: group.category,
+      image: group.image_url ?? "",
+      members: `${count} ${count === 1 ? "member" : "members"}`,
+      memberCount: count,
+      iconUrl: group.icon_url ?? undefined,
+      rules: group.rules ?? "",
+      ownerId: group.owner_id ?? undefined,
+      createdAt: group.created_at,
+    };
+  });
 }
 
 export async function insertUniversityGroup(profileId: string, name: string, description: string, category: string, universityId = NUB_UNIVERSITY_ID) {
@@ -361,10 +373,10 @@ export async function fetchUniversityEvents(universityId = NUB_UNIVERSITY_ID): P
   return data ?? [];
 }
 
-export async function insertPost(authorId: string, body: string, universityId = NUB_UNIVERSITY_ID, imageUrl?: string, audience: "public" | "university" = "university") {
+export async function insertPost(authorId: string, body: string, universityId = NUB_UNIVERSITY_ID, imageUrl?: string, audience: "public" | "university" = "university", groupId?: string) {
   const { data, error } = await createClient()
     .from("posts")
-    .insert({ author_id: authorId, university_id: universityId, body, image_url: imageUrl ?? null, audience, tag: "Community" })
+    .insert({ author_id: authorId, university_id: universityId, body, image_url: imageUrl ?? null, audience, tag: "Community", ...(groupId ? { group_id: groupId } : {}) })
     .select("id")
     .single();
   if (error) throw error;
@@ -555,5 +567,92 @@ export async function markNotificationsRead(profileId: string, ids?: string[]) {
   let query = createClient().from("notifications").update({ read_at: new Date().toISOString() }).eq("recipient_id", profileId).is("read_at", null);
   if (ids?.length) query = query.in("id", ids);
   const { error } = await query;
+  if (error) throw error;
+}
+
+// ---------- Campus servers ----------
+export type ServerMember = { profileId: string; name: string; headline: string; avatar: string; department: string; role: string; joinedAt: string };
+export type ServerMessage = { id: string; body: string; createdAt: string; senderId: string; senderName: string; senderAvatar: string };
+
+export async function uploadServerImage(file: File, kind: "icon" | "banner"): Promise<string> {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("Choose a JPG, PNG or WebP image.");
+  if (file.size > 5 * 1024 * 1024) throw new Error("Images must be 5 MB or smaller.");
+  const supabase = createClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) throw userError ?? new Error("Your session expired.");
+  const path = `${user.id}/servers/${kind}-${crypto.randomUUID()}.jpg`;
+  const { error } = await supabase.storage.from("profile-media").upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+  return supabase.storage.from("profile-media").getPublicUrl(path).data.publicUrl;
+}
+
+export async function createServer(profileId: string, universityId: string, values: { name: string; description: string; category: string; rules?: string; iconUrl?: string; imageUrl?: string }) {
+  const supabase = createClient();
+  const row: Record<string, unknown> = { owner_id: profileId, university_id: universityId, name: values.name, description: values.description, category: values.category, visibility: "university" };
+  if (values.rules) row.rules = values.rules;
+  if (values.iconUrl) row.icon_url = values.iconUrl;
+  if (values.imageUrl) row.image_url = values.imageUrl;
+  const { data, error } = await supabase.from("groups").insert(row).select("id").single();
+  if (error) throw error;
+  const { error: memberError } = await supabase.from("group_members").insert({ group_id: data.id, profile_id: profileId });
+  if (memberError) throw memberError;
+  return data.id as string;
+}
+
+export async function updateServer(groupId: string, values: { name: string; description: string; category: string; rules: string; iconUrl?: string; imageUrl?: string }) {
+  const row: Record<string, unknown> = { name: values.name, description: values.description, category: values.category, rules: values.rules };
+  if (values.iconUrl) row.icon_url = values.iconUrl;
+  if (values.imageUrl) row.image_url = values.imageUrl;
+  const { error } = await createClient().from("groups").update(row).eq("id", groupId);
+  if (error) throw error;
+}
+
+export async function fetchMyGroupIds(profileId: string): Promise<string[]> {
+  const { data, error } = await createClient().from("group_members").select("group_id").eq("profile_id", profileId);
+  if (error) throw error;
+  return (data ?? []).map((row) => row.group_id as string);
+}
+
+export async function fetchGroupMembers(groupId: string): Promise<ServerMember[]> {
+  const { data, error } = await createClient()
+    .from("group_members")
+    .select("role, joined_at, profile:profiles(id, display_name, headline, avatar_url, department)")
+    .eq("group_id", groupId)
+    .order("joined_at", { ascending: true });
+  if (error) throw error;
+  type Row = { role: string; joined_at: string; profile: unknown };
+  return ((data ?? []) as unknown as Row[]).flatMap((row, index) => {
+    const raw = Array.isArray(row.profile) ? row.profile[0] : row.profile;
+    const profile = raw as { id: string; display_name: string | null; headline: string | null; avatar_url: string | null; department: string | null } | null;
+    if (!profile) return [];
+    const name = profile.display_name ?? "CONNECT member";
+    return [{ profileId: profile.id, name, headline: profile.headline ?? "", avatar: profile.avatar_url ?? uniqueAvatarUrl(name, index), department: profile.department ?? "", role: row.role, joinedAt: row.joined_at }];
+  });
+}
+
+export async function fetchGroupMessages(groupId: string, limit = 100): Promise<ServerMessage[]> {
+  const { data, error } = await createClient()
+    .from("group_messages")
+    .select("id, body, created_at, sender_id, sender:profiles(id, display_name, avatar_url)")
+    .eq("group_id", groupId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  type Row = { id: string; body: string; created_at: string; sender_id: string; sender: unknown };
+  return ((data ?? []) as unknown as Row[]).reverse().map((row, index) => {
+    const raw = Array.isArray(row.sender) ? row.sender[0] : row.sender;
+    const sender = raw as { display_name: string | null; avatar_url: string | null } | null;
+    const name = sender?.display_name ?? "CONNECT member";
+    return { id: row.id, body: row.body, createdAt: row.created_at, senderId: row.sender_id, senderName: name, senderAvatar: sender?.avatar_url ?? uniqueAvatarUrl(name, index) };
+  });
+}
+
+export async function sendGroupMessage(groupId: string, senderId: string, body: string) {
+  const { error } = await createClient().from("group_messages").insert({ group_id: groupId, sender_id: senderId, body });
+  if (error) throw error;
+}
+
+export async function deleteGroupMessage(messageId: string) {
+  const { error } = await createClient().from("group_messages").delete().eq("id", messageId);
   if (error) throw error;
 }

@@ -1,0 +1,478 @@
+"use client";
+
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { ArrowLeft, Camera, Check, Crown, FileText, Hash, ImageIcon, Info, MessageSquare, Pencil, Plus, Search, Send, Trash2, Users, X } from "lucide-react";
+import ImageCropper from "./ImageCropper";
+import { FeedPost, UniversityGroup } from "../../data/mock";
+import { createClient } from "../../lib/supabase/client";
+import {
+  ServerMember, ServerMessage, createServer, deleteGroupMessage, fetchGroupMembers, fetchGroupMessages,
+  fetchMyGroupIds, sendGroupMessage, setGroupMembership, updateServer, uploadServerImage,
+} from "../../lib/supabase/data";
+
+const STANDARD_CATEGORIES = ["Club", "Department", "Batch", "Technology", "Design", "Sports", "Arts & Culture", "Careers", "Study", "Community"];
+
+type Props = {
+  view: "list" | "detail";
+  groups: UniversityGroup[] | null;
+  selected: UniversityGroup | null;
+  posts: FeedPost[] | null;
+  renderPost: (post: FeedPost) => ReactNode;
+  authenticated: boolean;
+  profileId: string | null;
+  universityId: string;
+  universityName: string;
+  notify: (message: string) => void;
+  onOpen: (group: UniversityGroup) => void;
+  onBack: () => void;
+  onOpenMember: (profileId: string) => void;
+  onRefresh: () => Promise<void> | void;
+  onMembership: (name: string, joined: boolean) => void;
+  onPost: (body: string, image: File | null) => Promise<void>;
+};
+
+function ServerIcon({ group, size = 48 }: { group: UniversityGroup; size?: number }) {
+  return (
+    <span className="cs-icon" style={{ width: size, height: size, fontSize: size * 0.42 }}>
+      {group.iconUrl
+        // eslint-disable-next-line @next/next/no-img-element
+        ? <img src={group.iconUrl} alt="" loading="lazy" decoding="async"/>
+        : group.name.slice(0, 1).toUpperCase()}
+    </span>
+  );
+}
+
+function timeLabel(iso: string) {
+  return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+/* ---------------- create / edit ---------------- */
+function ServerFormModal({ mode, group, profileId, universityId, onClose, onSaved, notify }: {
+  mode: "create" | "edit"; group?: UniversityGroup; profileId: string; universityId: string;
+  onClose: () => void; onSaved: (id?: string) => void; notify: (message: string) => void;
+}) {
+  const [name, setName] = useState(group?.name ?? "");
+  const [description, setDescription] = useState(group?.description ?? "");
+  const [category, setCategory] = useState(group?.category ?? "Club");
+  const [rules, setRules] = useState(group?.rules ?? "");
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [crop, setCrop] = useState<{ kind: "icon" | "banner"; file: File } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const iconPreview = useMemo(() => (iconFile ? URL.createObjectURL(iconFile) : group?.iconUrl ?? ""), [iconFile, group?.iconUrl]);
+  const bannerPreview = useMemo(() => (bannerFile ? URL.createObjectURL(bannerFile) : group?.image ?? ""), [bannerFile, group?.image]);
+  const categories = STANDARD_CATEGORIES.includes(category) ? STANDARD_CATEGORIES : [category, ...STANDARD_CATEGORIES];
+  const dark = typeof document !== "undefined" && !!document.querySelector(".app-shell.dark");
+
+  function pick(kind: "icon" | "banner", event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setError("Choose an image file."); return; }
+    setError("");
+    setCrop({ kind, file });
+  }
+
+  async function save() {
+    if (!name.trim()) return;
+    setSaving(true);
+    setError("");
+    try {
+      const iconUrl = iconFile ? await uploadServerImage(iconFile, "icon") : undefined;
+      const imageUrl = bannerFile ? await uploadServerImage(bannerFile, "banner") : undefined;
+      if (mode === "create") {
+        const id = await createServer(profileId, universityId, { name: name.trim(), description: description.trim(), category, rules: rules.trim(), iconUrl, imageUrl });
+        notify("Your server is live");
+        onSaved(id);
+      } else if (group?.id) {
+        await updateServer(group.id, { name: name.trim(), description: description.trim(), category, rules: rules.trim(), iconUrl, imageUrl });
+        notify("Server updated");
+        onSaved(group.id);
+      }
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "";
+      setError(/rules|icon_url|column/i.test(message) ? "Run the Campus Servers SQL update first, then try again." : message || "Could not save the server. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div className="cs-modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !crop) onClose(); }}>
+      <div className={`cs-modal ${dark ? "is-dark" : ""}`} role="dialog" aria-modal="true" aria-label={mode === "create" ? "Create a server" : "Edit server"}>
+        <div className="cs-modal-head">
+          <b>{mode === "create" ? "Create a server" : "Edit server"}</b>
+          <button className="cs-x" aria-label="Close" onClick={onClose}><X size={18}/></button>
+        </div>
+        <div className="cs-modal-body">
+          <div className="cs-pickers">
+            <label className="cs-picker cs-picker-icon">
+              <span className="cs-icon" style={{ width: 72, height: 72, fontSize: 28 }}>
+                {iconPreview
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={iconPreview} alt=""/>
+                  : <Camera size={22}/>}
+              </span>
+              <small>Server icon</small>
+              <input type="file" accept="image/*" onChange={event => pick("icon", event)}/>
+            </label>
+            <label className="cs-picker cs-picker-banner">
+              {bannerPreview
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={bannerPreview} alt=""/>
+                : <span><ImageIcon size={22}/></span>}
+              <small>Banner</small>
+              <input type="file" accept="image/*" onChange={event => pick("banner", event)}/>
+            </label>
+          </div>
+          <label className="cs-field">Server name<input value={name} maxLength={60} onChange={event => setName(event.target.value)} placeholder="e.g. Robotics Club"/></label>
+          <label className="cs-field">Category
+            <select value={category} onChange={event => setCategory(event.target.value)}>{categories.map(item => <option key={item}>{item}</option>)}</select>
+          </label>
+          <label className="cs-field">About<textarea rows={3} maxLength={300} value={description} onChange={event => setDescription(event.target.value)} placeholder="What is this server about?"/></label>
+          <label className="cs-field">Rules (optional)<textarea rows={3} maxLength={1000} value={rules} onChange={event => setRules(event.target.value)} placeholder="Be kind. Stay on topic."/></label>
+          {error && <p className="cs-error">{error}</p>}
+        </div>
+        <div className="cs-modal-foot">
+          <button className="cs-btn" onClick={onClose}>Cancel</button>
+          <button className="cs-btn cs-btn-solid" disabled={!name.trim() || saving} onClick={() => void save()}>{saving ? "Saving..." : mode === "create" ? "Create server" : "Save changes"}</button>
+        </div>
+      </div>
+      {crop && (
+        <ImageCropper
+          file={crop.file}
+          aspect={crop.kind === "icon" ? 1 : 3}
+          round={crop.kind === "icon"}
+          outWidth={crop.kind === "icon" ? 512 : 1500}
+          title={crop.kind === "icon" ? "Crop server icon" : "Crop banner"}
+          onCancel={() => setCrop(null)}
+          onDone={file => { if (crop.kind === "icon") setIconFile(file); else setBannerFile(file); setCrop(null); }}
+        />
+      )}
+    </div>,
+    document.body
+  );
+}
+
+/* ---------------- chat ---------------- */
+function ServerChat({ groupId, profileId, isMember, isOwner, notify }: { groupId: string; profileId: string | null; isMember: boolean; isOwner: boolean; notify: (message: string) => void }) {
+  const [messages, setMessages] = useState<ServerMessage[] | null>(null);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isMember) return;
+    let active = true;
+    const load = () => fetchGroupMessages(groupId).then(rows => { if (active) { setMessages(rows); setFailed(false); } }).catch(() => { if (active) setFailed(true); });
+    void load();
+    const supabase = createClient();
+    const channel = supabase.channel(`server-chat:${groupId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "group_messages", filter: `group_id=eq.${groupId}` }, () => { void load(); })
+      .subscribe();
+    return () => { active = false; void supabase.removeChannel(channel); };
+  }, [groupId, isMember]);
+
+  useEffect(() => {
+    const element = listRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
+  }, [messages]);
+
+  async function send() {
+    const body = text.trim();
+    if (!body || !profileId || sending) return;
+    setSending(true);
+    try {
+      await sendGroupMessage(groupId, profileId, body);
+      setText("");
+      setMessages(await fetchGroupMessages(groupId));
+    } catch {
+      notify("Message could not be sent");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (!isMember) return <div className="cs-empty"><MessageSquare size={26}/><b>Members-only chat</b><p>Join this server to read and send messages.</p></div>;
+  if (failed && !messages) return <div className="cs-empty"><b>Chat is not ready yet</b><p>Run the Campus Servers SQL update in Supabase to turn on chat.</p></div>;
+
+  return (
+    <div className="cs-chat">
+      <div className="cs-chat-head"><Hash size={16}/> general</div>
+      <div className="cs-chat-list" ref={listRef}>
+        {messages === null && <p className="cs-muted">Loading messages...</p>}
+        {messages?.length === 0 && <p className="cs-muted">No messages yet. Say hello!</p>}
+        {messages?.map(message => {
+          const mine = message.senderId === profileId;
+          return (
+            <div key={message.id} className={`cs-msg ${mine ? "is-mine" : ""}`}>
+              {!mine && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="cs-msg-avatar" src={message.senderAvatar} alt="" loading="lazy"/>
+              )}
+              <div className="cs-bubble">
+                {!mine && <b>{message.senderName}</b>}
+                <p>{message.body}</p>
+                <small>{timeLabel(message.createdAt)}</small>
+              </div>
+              {(mine || isOwner) && (
+                <button className="cs-msg-del" aria-label="Delete message" onClick={() => void deleteGroupMessage(message.id).then(() => fetchGroupMessages(groupId)).then(setMessages).catch(() => notify("Could not delete the message"))}><Trash2 size={14}/></button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="cs-chat-input">
+        <input value={text} maxLength={2000} placeholder="Message #general" onChange={event => setText(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); } }}/>
+        <button className="cs-send" aria-label="Send message" disabled={!text.trim() || sending} onClick={() => void send()}><Send size={18}/></button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- main ---------------- */
+export default function CampusServers(props: Props) {
+  const { view, groups, posts, renderPost, authenticated, profileId, universityId, universityName, notify, onOpen, onBack, onOpenMember, onRefresh, onMembership, onPost } = props;
+  const selected = useMemo(() => groups?.find(group => group.id === props.selected?.id) ?? props.selected, [groups, props.selected]);
+  const [myIds, setMyIds] = useState<string[]>([]);
+  const [listTab, setListTab] = useState<"discover" | "mine">("discover");
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("All");
+  const [tab, setTab] = useState<"posts" | "chat" | "members" | "about">("posts");
+  const [members, setMembers] = useState<ServerMember[] | null>(null);
+  const [form, setForm] = useState<null | "create" | "edit">(null);
+  const [postBody, setPostBody] = useState("");
+  const [postImage, setPostImage] = useState<File | null>(null);
+  const [posting, setPosting] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profileId) { setMyIds([]); return; }
+    let active = true;
+    fetchMyGroupIds(profileId).then(ids => { if (active) setMyIds(ids); }).catch(() => undefined);
+    return () => { active = false; };
+  }, [profileId]);
+
+  useEffect(() => { setTab("posts"); setMembers(null); setPostBody(""); setPostImage(null); }, [selected?.id]);
+
+  useEffect(() => {
+    if (view !== "detail" || !selected?.id || (tab !== "members" && tab !== "about")) return;
+    let active = true;
+    fetchGroupMembers(selected.id).then(rows => { if (active) setMembers(rows); }).catch(() => { if (active) setMembers([]); });
+    return () => { active = false; };
+  }, [view, tab, selected?.id, selected?.memberCount]);
+
+  async function toggleJoin(group: UniversityGroup) {
+    if (!authenticated || !profileId) { notify("Sign in to join servers"); return; }
+    if (!group.id) { notify("This server is not available"); return; }
+    const join = !myIds.includes(group.id);
+    setBusyId(group.id);
+    try {
+      await setGroupMembership(group.id, profileId, join);
+      setMyIds(ids => (join ? [...ids, group.id!] : ids.filter(id => id !== group.id)));
+      onMembership(group.name, join);
+      notify(join ? `You joined ${group.name}` : `You left ${group.name}`);
+      await onRefresh();
+    } catch {
+      notify("Could not update membership");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const categories = useMemo(() => {
+    const extra = (groups ?? []).map(group => group.category).filter(item => item && !STANDARD_CATEGORIES.includes(item));
+    return ["All", ...STANDARD_CATEGORIES, ...Array.from(new Set(extra))];
+  }, [groups]);
+
+  const filtered = useMemo(() => (groups ?? []).filter(group => {
+    if (listTab === "mine" && !myIds.includes(group.id ?? "")) return false;
+    if (category !== "All" && group.category !== category) return false;
+    return `${group.name} ${group.description ?? ""} ${group.category}`.toLowerCase().includes(query.trim().toLowerCase());
+  }), [groups, listTab, myIds, category, query]);
+
+  const form_ = form && profileId ? (
+    <ServerFormModal
+      mode={form}
+      group={form === "edit" ? selected ?? undefined : undefined}
+      profileId={profileId}
+      universityId={universityId}
+      notify={notify}
+      onClose={() => setForm(null)}
+      onSaved={async id => {
+        setForm(null);
+        await onRefresh();
+        if (form === "create" && id) {
+          setMyIds(ids => (ids.includes(id) ? ids : [...ids, id]));
+          setListTab("mine");
+        }
+      }}
+    />
+  ) : null;
+
+  /* ----- list view ----- */
+  if (view === "list") {
+    return (
+      <div className="cs">
+        <div className="cs-banner">
+          <span className="cs-eyebrow">{universityName.toUpperCase()}</span>
+          <h2>Campus Servers</h2>
+          <p>Join your university&apos;s clubs, departments and communities. Chat, post and meet people who share your interests.</p>
+          <button className="cs-btn cs-btn-solid" onClick={() => (authenticated ? setForm("create") : notify("Sign in to create a server"))}><Plus size={16}/> Create a server</button>
+        </div>
+
+        <div className="cs-seg" role="tablist">
+          <button className={listTab === "discover" ? "active" : ""} onClick={() => setListTab("discover")}>Discover</button>
+          <button className={listTab === "mine" ? "active" : ""} onClick={() => setListTab("mine")}>My servers{myIds.length ? ` (${myIds.length})` : ""}</button>
+        </div>
+
+        <label className="cs-search"><Search size={17}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search servers..."/></label>
+        <div className="cs-chips">{categories.map(item => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{item}</button>)}</div>
+
+        {groups === null && <div className="cs-empty"><p>Loading servers...</p></div>}
+        {groups !== null && filtered.length === 0 && (
+          <div className="cs-empty">
+            <Users size={26}/>
+            <b>{listTab === "mine" ? "You have not joined any server yet" : "No servers found"}</b>
+            <p>{listTab === "mine" ? "Browse Discover and join one, or start your own." : "Try another search or create the first one."}</p>
+          </div>
+        )}
+        <div className="cs-grid">
+          {filtered.map(group => {
+            const joinedHere = myIds.includes(group.id ?? "");
+            return (
+              <article className="cs-card" key={group.id ?? group.name}>
+                <button className="cs-card-open" onClick={() => onOpen(group)} aria-label={`Open ${group.name}`}>
+                  <span className="cs-cover">{group.image
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={group.image} alt="" loading="lazy" decoding="async"/>
+                    : <span className="cs-cover-fallback"/>}</span>
+                  <span className="cs-card-main">
+                    <ServerIcon group={group} size={52}/>
+                    <span className="cs-card-text">
+                      <b>{group.name}</b>
+                      <small>{group.category} · {group.members}</small>
+                    </span>
+                  </span>
+                  {group.description && <span className="cs-desc">{group.description}</span>}
+                </button>
+                <button className={`cs-btn cs-join ${joinedHere ? "" : "cs-btn-solid"}`} disabled={busyId === group.id || group.ownerId === profileId} onClick={() => void toggleJoin(group)}>
+                  {group.ownerId === profileId ? <><Crown size={15}/> You own this</> : joinedHere ? <><Check size={15}/> Joined</> : <><Plus size={15}/> Join server</>}
+                </button>
+              </article>
+            );
+          })}
+        </div>
+        {form_}
+      </div>
+    );
+  }
+
+  /* ----- detail view ----- */
+  if (!selected) {
+    return <div className="cs"><div className="cs-empty"><b>Choose a server</b><p>Open a server from Campus Servers to see it here.</p><button className="cs-btn" onClick={onBack}>Back to servers</button></div></div>;
+  }
+  const isOwner = !!profileId && selected.ownerId === profileId;
+  const isMember = !!selected.id && myIds.includes(selected.id);
+  const ownerMember = members?.find(member => member.profileId === selected.ownerId);
+
+  return (
+    <div className="cs">
+      <div className="cs-hero">
+        {selected.image
+          // eslint-disable-next-line @next/next/no-img-element
+          ? <img src={selected.image} alt=""/>
+          : <span className="cs-cover-fallback"/>}
+        <button className="cs-back" onClick={onBack} aria-label="Back to servers"><ArrowLeft size={20}/></button>
+      </div>
+      <div className="cs-head">
+        <ServerIcon group={selected} size={76}/>
+        <div className="cs-head-text">
+          <h2>{selected.name}</h2>
+          <p>{selected.category} · {selected.members}</p>
+        </div>
+        <div className="cs-head-actions">
+          {isOwner
+            ? <button className="cs-btn" onClick={() => setForm("edit")}><Pencil size={15}/> Edit</button>
+            : <button className={`cs-btn ${isMember ? "" : "cs-btn-solid"}`} disabled={busyId === selected.id} onClick={() => void toggleJoin(selected)}>{isMember ? <><Check size={15}/> Joined</> : <><Plus size={15}/> Join</>}</button>}
+        </div>
+      </div>
+      {selected.description && <p className="cs-about-line">{selected.description}</p>}
+
+      <div className="cs-tabs" role="tablist">
+        <button className={tab === "posts" ? "active" : ""} onClick={() => setTab("posts")}><FileText size={16}/> Posts</button>
+        <button className={tab === "chat" ? "active" : ""} onClick={() => setTab("chat")}><MessageSquare size={16}/> Chat</button>
+        <button className={tab === "members" ? "active" : ""} onClick={() => setTab("members")}><Users size={16}/> Members</button>
+        <button className={tab === "about" ? "active" : ""} onClick={() => setTab("about")}><Info size={16}/> About</button>
+      </div>
+
+      {tab === "posts" && (
+        <div className="cs-panel">
+          {isMember ? (
+            <div className="cs-composer">
+              <textarea rows={2} maxLength={2000} value={postBody} onChange={event => setPostBody(event.target.value)} placeholder={`Share something with ${selected.name}...`}/>
+              {postImage && <span className="cs-file">{postImage.name} <button aria-label="Remove image" onClick={() => setPostImage(null)}><X size={14}/></button></span>}
+              <div className="cs-composer-row">
+                <label className="cs-icon-btn" aria-label="Add image"><ImageIcon size={18}/><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={event => { setPostImage(event.target.files?.[0] ?? null); event.target.value = ""; }}/></label>
+                <button className="cs-btn cs-btn-solid" disabled={!postBody.trim() || posting} onClick={async () => {
+                  setPosting(true);
+                  try { await onPost(postBody.trim(), postImage); setPostBody(""); setPostImage(null); notify("Posted to the server"); }
+                  catch (cause) { notify(cause instanceof Error ? cause.message : "Post could not be saved"); }
+                  finally { setPosting(false); }
+                }}>{posting ? "Posting..." : "Post"}</button>
+              </div>
+            </div>
+          ) : <div className="cs-note">Join this server to post. Anyone at your university can read its posts.</div>}
+          {posts === null && <div className="cs-empty"><p>Loading posts...</p></div>}
+          {posts !== null && posts.length === 0 && <div className="cs-empty"><FileText size={26}/><b>No posts yet</b><p>{isMember ? "Be the first to post in this server." : "Join to start the conversation."}</p></div>}
+          {posts?.map(post => renderPost(post))}
+        </div>
+      )}
+
+      {tab === "chat" && selected.id && (
+        <div className="cs-panel"><ServerChat groupId={selected.id} profileId={profileId} isMember={isMember} isOwner={isOwner} notify={notify}/></div>
+      )}
+
+      {tab === "members" && (
+        <div className="cs-panel">
+          {members === null && <div className="cs-empty"><p>Loading members...</p></div>}
+          {members?.length === 0 && <div className="cs-empty"><p>No members yet.</p></div>}
+          <div className="cs-members">
+            {[...(members ?? [])].sort((a, b) => Number(b.profileId === selected.ownerId) - Number(a.profileId === selected.ownerId)).map(member => (
+              <button className="cs-member" key={member.profileId} onClick={() => onOpenMember(member.profileId)}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={member.avatar} alt="" loading="lazy" decoding="async"/>
+                <span className="cs-member-text"><b>{member.name}</b><small>{member.department || member.headline || "Member"}</small></span>
+                {member.profileId === selected.ownerId ? <span className="cs-role"><Crown size={13}/> Owner</span> : member.role !== "member" ? <span className="cs-role">{member.role === "admin" ? "Admin" : "Moderator"}</span> : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tab === "about" && (
+        <div className="cs-panel">
+          <div className="cs-card-plain">
+            <h3>About</h3>
+            <p>{selected.description || "No description yet."}</p>
+            <h3>Rules</h3>
+            <p className="cs-pre">{selected.rules?.trim() || "No rules have been set."}</p>
+            <h3>Details</h3>
+            <ul className="cs-facts">
+              <li><span>Category</span><b>{selected.category}</b></li>
+              <li><span>Members</span><b>{selected.memberCount ?? 0}</b></li>
+              <li><span>University</span><b>{universityName}</b></li>
+              {selected.createdAt && <li><span>Created</span><b>{new Date(selected.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</b></li>}
+              {ownerMember && <li><span>Owner</span><b>{ownerMember.name}</b></li>}
+            </ul>
+          </div>
+        </div>
+      )}
+      {form_}
+    </div>
+  );
+}
