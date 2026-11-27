@@ -131,13 +131,14 @@ export async function fetchPublicProfile(profileId: string): Promise<PublicProfi
   return { person, posts };
 }
 
-type GroupRow = { id: string; name: string; description: string; category: string; image_url: string | null; owner_id?: string | null; created_at?: string; icon_url?: string | null; rules?: string | null; members: unknown };
+type GroupRow = { id: string; name: string; description: string; category: string; image_url: string | null; owner_id?: string | null; created_at?: string; icon_url?: string | null; rules?: string | null; join_mode?: string | null; members: unknown };
 
 export async function fetchUniversityGroups(universityId = NUB_UNIVERSITY_ID): Promise<UniversityGroup[]> {
   const supabase = createClient();
   const base = "id, name, description, category, image_url, owner_id, created_at, members:group_members(count)";
   const query = (columns: string) => supabase.from("groups").select(columns).eq("university_id", universityId).in("visibility", ["public", "university"]).order("name");
-  let result = await query(`${base}, icon_url, rules`);
+  let result = await query(`${base}, icon_url, rules, join_mode`);
+  if (result.error) result = await query(`${base}, icon_url, rules`);
   if (result.error) result = await query(base);
   if (result.error) throw result.error;
 
@@ -153,6 +154,7 @@ export async function fetchUniversityGroups(universityId = NUB_UNIVERSITY_ID): P
       memberCount: count,
       iconUrl: group.icon_url ?? undefined,
       rules: group.rules ?? "",
+      joinMode: group.join_mode === "approval" ? ("approval" as const) : ("open" as const),
       ownerId: group.owner_id ?? undefined,
       createdAt: group.created_at,
     };
@@ -586,10 +588,11 @@ export async function uploadServerImage(file: File, kind: "icon" | "banner"): Pr
   return supabase.storage.from("profile-media").getPublicUrl(path).data.publicUrl;
 }
 
-export async function createServer(profileId: string, universityId: string, values: { name: string; description: string; category: string; rules?: string; iconUrl?: string; imageUrl?: string }) {
+export async function createServer(profileId: string, universityId: string, values: { name: string; description: string; category: string; rules?: string; iconUrl?: string; imageUrl?: string; joinMode?: "open" | "approval" }) {
   const supabase = createClient();
   const row: Record<string, unknown> = { owner_id: profileId, university_id: universityId, name: values.name, description: values.description, category: values.category, visibility: "university" };
   if (values.rules) row.rules = values.rules;
+  if (values.joinMode === "approval") row.join_mode = "approval";
   if (values.iconUrl) row.icon_url = values.iconUrl;
   if (values.imageUrl) row.image_url = values.imageUrl;
   const { data, error } = await supabase.from("groups").insert(row).select("id").single();
@@ -599,8 +602,9 @@ export async function createServer(profileId: string, universityId: string, valu
   return data.id as string;
 }
 
-export async function updateServer(groupId: string, values: { name: string; description: string; category: string; rules: string; iconUrl?: string; imageUrl?: string }) {
+export async function updateServer(groupId: string, values: { name: string; description: string; category: string; rules: string; iconUrl?: string; imageUrl?: string; joinMode?: "open" | "approval" }) {
   const row: Record<string, unknown> = { name: values.name, description: values.description, category: values.category, rules: values.rules };
+  if (values.joinMode) row.join_mode = values.joinMode;
   if (values.iconUrl) row.icon_url = values.iconUrl;
   if (values.imageUrl) row.image_url = values.imageUrl;
   const { error } = await createClient().from("groups").update(row).eq("id", groupId);
@@ -654,5 +658,69 @@ export async function sendGroupMessage(groupId: string, senderId: string, body: 
 
 export async function deleteGroupMessage(messageId: string) {
   const { error } = await createClient().from("group_messages").delete().eq("id", messageId);
+  if (error) throw error;
+}
+
+// ---------- Server administration ----------
+export type JoinRequest = { id: string; profileId: string; name: string; headline: string; avatar: string; department: string; message: string; createdAt: string };
+
+export async function deleteServer(groupId: string) {
+  const { data, error } = await createClient().from("groups").delete().eq("id", groupId).select("id");
+  if (error) throw error;
+  if (!data?.length) throw new Error("You are not allowed to delete this server.");
+}
+
+export async function requestJoinServer(groupId: string, note = ""): Promise<"joined" | "pending"> {
+  const { data, error } = await createClient().rpc("request_join_group", { target_group: groupId, note });
+  if (error) throw error;
+  return data === "pending" ? "pending" : "joined";
+}
+
+export async function cancelJoinRequest(groupId: string) {
+  const { error } = await createClient().rpc("cancel_join_request", { target_group: groupId });
+  if (error) throw error;
+}
+
+export async function fetchMyPendingRequestIds(profileId: string): Promise<string[]> {
+  const { data, error } = await createClient().from("group_join_requests").select("group_id").eq("profile_id", profileId).eq("status", "pending");
+  if (error) throw error;
+  return (data ?? []).map((row) => row.group_id as string);
+}
+
+export async function fetchJoinRequests(groupId: string): Promise<JoinRequest[]> {
+  const { data, error } = await createClient()
+    .from("group_join_requests")
+    .select("id, message, created_at, profile:profiles(id, display_name, headline, avatar_url, department)")
+    .eq("group_id", groupId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  type Row = { id: string; message: string; created_at: string; profile: unknown };
+  return ((data ?? []) as unknown as Row[]).flatMap((row, index) => {
+    const raw = Array.isArray(row.profile) ? row.profile[0] : row.profile;
+    const profile = raw as { id: string; display_name: string | null; headline: string | null; avatar_url: string | null; department: string | null } | null;
+    if (!profile) return [];
+    const name = profile.display_name ?? "CONNECT member";
+    return [{ id: row.id, profileId: profile.id, name, headline: profile.headline ?? "", avatar: profile.avatar_url ?? uniqueAvatarUrl(name, index), department: profile.department ?? "", message: row.message, createdAt: row.created_at }];
+  });
+}
+
+export async function decideJoinRequest(requestId: string, approve: boolean) {
+  const { error } = await createClient().rpc("decide_join_request", { request_id: requestId, approve });
+  if (error) throw error;
+}
+
+export async function removeServerMember(groupId: string, profileId: string) {
+  const { error } = await createClient().rpc("remove_group_member", { target_group: groupId, target_profile: profileId });
+  if (error) throw error;
+}
+
+export async function setServerMemberRole(groupId: string, profileId: string, role: "member" | "moderator" | "admin") {
+  const { error } = await createClient().rpc("set_group_member_role", { target_group: groupId, target_profile: profileId, new_role: role });
+  if (error) throw error;
+}
+
+export async function transferServerOwnership(groupId: string, newOwnerId: string) {
+  const { error } = await createClient().rpc("transfer_group_ownership", { target_group: groupId, new_owner: newOwnerId });
   if (error) throw error;
 }
