@@ -2,14 +2,13 @@
 
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, Camera, Check, Clock, Crown, FileText, Hash, ImageIcon, Info, Lock, MessageSquare, MoreHorizontal, Pencil, Plus, Search, Send, Shield, Trash2, UserCheck, UserX, Users, X } from "lucide-react";
+import { ArrowLeft, Camera, Check, Crown, FileText, Hash, ImageIcon, Info, MessageSquare, Pencil, Plus, Search, Send, Trash2, Users, X } from "lucide-react";
 import ImageCropper from "./ImageCropper";
 import { FeedPost, UniversityGroup } from "../../data/mock";
 import { createClient } from "../../lib/supabase/client";
 import {
-  JoinRequest, ServerMember, ServerMessage, cancelJoinRequest, createServer, decideJoinRequest, deleteGroupMessage, deleteServer,
-  fetchGroupMembers, fetchGroupMessages, fetchJoinRequests, fetchMyGroupIds, fetchMyPendingRequestIds, removeServerMember,
-  requestJoinServer, sendGroupMessage, setGroupMembership, setServerMemberRole, transferServerOwnership, updateServer, uploadServerImage,
+  ServerMember, ServerMessage, createServer, deleteGroupMessage, fetchGroupMembers, fetchGroupMessages,
+  fetchMyGroupIds, sendGroupMessage, setGroupMembership, updateServer, uploadServerImage,
 } from "../../lib/supabase/data";
 
 const STANDARD_CATEGORIES = ["Club", "Department", "Batch", "Technology", "Design", "Sports", "Arts & Culture", "Careers", "Study", "Community"];
@@ -49,17 +48,14 @@ function timeLabel(iso: string) {
 }
 
 /* ---------------- create / edit ---------------- */
-function ServerFormModal({ mode, group, profileId, universityId, onClose, onSaved, onDeleted, notify }: {
+function ServerFormModal({ mode, group, profileId, universityId, onClose, onSaved, notify }: {
   mode: "create" | "edit"; group?: UniversityGroup; profileId: string; universityId: string;
-  onClose: () => void; onSaved: (id?: string) => void; onDeleted: () => void; notify: (message: string) => void;
+  onClose: () => void; onSaved: (id?: string) => void; notify: (message: string) => void;
 }) {
   const [name, setName] = useState(group?.name ?? "");
   const [description, setDescription] = useState(group?.description ?? "");
   const [category, setCategory] = useState(group?.category ?? "Club");
   const [rules, setRules] = useState(group?.rules ?? "");
-  const [joinMode, setJoinMode] = useState<"open" | "approval">(group?.joinMode ?? "open");
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [confirmName, setConfirmName] = useState("");
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [crop, setCrop] = useState<{ kind: "icon" | "banner"; file: File } | null>(null);
@@ -87,32 +83,18 @@ function ServerFormModal({ mode, group, profileId, universityId, onClose, onSave
       const iconUrl = iconFile ? await uploadServerImage(iconFile, "icon") : undefined;
       const imageUrl = bannerFile ? await uploadServerImage(bannerFile, "banner") : undefined;
       if (mode === "create") {
-        const id = await createServer(profileId, universityId, { name: name.trim(), description: description.trim(), category, rules: rules.trim(), iconUrl, imageUrl, joinMode });
+        const id = await createServer(profileId, universityId, { name: name.trim(), description: description.trim(), category, rules: rules.trim(), iconUrl, imageUrl });
         notify("Your server is live");
         onSaved(id);
       } else if (group?.id) {
-        await updateServer(group.id, { name: name.trim(), description: description.trim(), category, rules: rules.trim(), iconUrl, imageUrl, joinMode });
+        await updateServer(group.id, { name: name.trim(), description: description.trim(), category, rules: rules.trim(), iconUrl, imageUrl });
         notify("Server updated");
         onSaved(group.id);
       }
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "";
-      setError(/rules|icon_url|join_mode|column/i.test(message) ? "Run the Campus Servers SQL update first, then try again." : message || "Could not save the server. Try again.");
+      setError(/rules|icon_url|column/i.test(message) ? "Run the Campus Servers SQL update first, then try again." : message || "Could not save the server. Try again.");
     } finally {
-      setSaving(false);
-    }
-  }
-
-  async function removeServer() {
-    if (!group?.id) return;
-    setSaving(true);
-    setError("");
-    try {
-      await deleteServer(group.id);
-      notify("Server deleted");
-      onDeleted();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not delete the server.");
       setSaving(false);
     }
   }
@@ -152,26 +134,6 @@ function ServerFormModal({ mode, group, profileId, universityId, onClose, onSave
           </label>
           <label className="cs-field">About<textarea rows={3} maxLength={300} value={description} onChange={event => setDescription(event.target.value)} placeholder="What is this server about?"/></label>
           <label className="cs-field">Rules (optional)<textarea rows={3} maxLength={1000} value={rules} onChange={event => setRules(event.target.value)} placeholder="Be kind. Stay on topic."/></label>
-          <div className="cs-field">Who can join
-            <div className="cs-mode">
-              <button type="button" className={joinMode === "open" ? "active" : ""} onClick={() => setJoinMode("open")}><b>Open</b><small>Anyone at your university joins instantly</small></button>
-              <button type="button" className={joinMode === "approval" ? "active" : ""} onClick={() => setJoinMode("approval")}><b><Lock size={13}/> Approval required</b><small>Admins review every request</small></button>
-            </div>
-          </div>
-          {mode === "edit" && (
-            <div className="cs-danger">
-              <b>Danger zone</b>
-              {!deleteOpen
-                ? <button type="button" className="cs-btn cs-btn-danger" onClick={() => setDeleteOpen(true)}><Trash2 size={15}/> Delete this server</button>
-                : (
-                  <>
-                    <p>This permanently deletes the server, its posts, chat and members. Type <b>{group?.name}</b> to confirm.</p>
-                    <input value={confirmName} onChange={event => setConfirmName(event.target.value)} placeholder={group?.name}/>
-                    <button type="button" className="cs-btn cs-btn-danger" disabled={confirmName.trim() !== group?.name || saving} onClick={() => void removeServer()}>Delete forever</button>
-                  </>
-                )}
-            </div>
-          )}
           {error && <p className="cs-error">{error}</p>}
         </div>
         <div className="cs-modal-foot">
@@ -196,7 +158,7 @@ function ServerFormModal({ mode, group, profileId, universityId, onClose, onSave
 }
 
 /* ---------------- chat ---------------- */
-function ServerChat({ groupId, profileId, isMember, canModerate, notify }: { groupId: string; profileId: string | null; isMember: boolean; canModerate: boolean; notify: (message: string) => void }) {
+function ServerChat({ groupId, profileId, isMember, isOwner, notify }: { groupId: string; profileId: string | null; isMember: boolean; isOwner: boolean; notify: (message: string) => void }) {
   const [messages, setMessages] = useState<ServerMessage[] | null>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -216,11 +178,8 @@ function ServerChat({ groupId, profileId, isMember, canModerate, notify }: { gro
   }, [groupId, isMember]);
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      const element = listRef.current;
-      if (element) element.scrollTop = element.scrollHeight;
-    });
-    return () => cancelAnimationFrame(frame);
+    const element = listRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
   }, [messages]);
 
   async function send() {
@@ -260,7 +219,7 @@ function ServerChat({ groupId, profileId, isMember, canModerate, notify }: { gro
                 <p>{message.body}</p>
                 <small>{timeLabel(message.createdAt)}</small>
               </div>
-              {(mine || canModerate) && (
+              {(mine || isOwner) && (
                 <button className="cs-msg-del" aria-label="Delete message" onClick={() => void deleteGroupMessage(message.id).then(() => fetchGroupMessages(groupId)).then(setMessages).catch(() => notify("Could not delete the message"))}><Trash2 size={14}/></button>
               )}
             </div>
@@ -283,12 +242,7 @@ export default function CampusServers(props: Props) {
   const [listTab, setListTab] = useState<"discover" | "mine">("discover");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
-  const [tab, setTab] = useState<"posts" | "chat" | "members" | "requests" | "about">("posts");
-  const [pendingIds, setPendingIds] = useState<string[]>([]);
-  const [requests, setRequests] = useState<JoinRequest[] | null>(null);
-  const [manageId, setManageId] = useState<string | null>(null);
-  const [confirmKey, setConfirmKey] = useState<string | null>(null);
-  const [actionBusy, setActionBusy] = useState(false);
+  const [tab, setTab] = useState<"posts" | "chat" | "members" | "about">("posts");
   const [members, setMembers] = useState<ServerMember[] | null>(null);
   const [form, setForm] = useState<null | "create" | "edit">(null);
   const [postBody, setPostBody] = useState("");
@@ -297,102 +251,36 @@ export default function CampusServers(props: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!profileId) { setMyIds([]); setPendingIds([]); return; }
+    if (!profileId) { setMyIds([]); return; }
     let active = true;
     fetchMyGroupIds(profileId).then(ids => { if (active) setMyIds(ids); }).catch(() => undefined);
-    fetchMyPendingRequestIds(profileId).then(ids => { if (active) setPendingIds(ids); }).catch(() => undefined);
     return () => { active = false; };
   }, [profileId]);
 
-  useEffect(() => { setTab("posts"); setMembers(null); setRequests(null); setManageId(null); setConfirmKey(null); setPostBody(""); setPostImage(null); }, [selected?.id]);
-  useEffect(() => { setConfirmKey(null); }, [manageId]);
+  useEffect(() => { setTab("posts"); setMembers(null); setPostBody(""); setPostImage(null); }, [selected?.id]);
 
   useEffect(() => {
-    if (view !== "detail" || !selected?.id) return;
+    if (view !== "detail" || !selected?.id || (tab !== "members" && tab !== "about")) return;
     let active = true;
     fetchGroupMembers(selected.id).then(rows => { if (active) setMembers(rows); }).catch(() => { if (active) setMembers([]); });
     return () => { active = false; };
-  }, [view, selected?.id, selected?.memberCount]);
-
-  const myRole = !profileId || !selected ? "" : selected.ownerId === profileId ? "owner" : members?.find(member => member.profileId === profileId)?.role ?? "";
-  const isManager = myRole === "owner" || myRole === "admin" || myRole === "moderator";
-
-  useEffect(() => {
-    if (view !== "detail" || !selected?.id || !isManager) { setRequests(null); return; }
-    let active = true;
-    fetchJoinRequests(selected.id).then(rows => { if (active) setRequests(rows); }).catch(() => { if (active) setRequests([]); });
-    return () => { active = false; };
-  }, [view, selected?.id, isManager, tab]);
+  }, [view, tab, selected?.id, selected?.memberCount]);
 
   async function toggleJoin(group: UniversityGroup) {
     if (!authenticated || !profileId) { notify("Sign in to join servers"); return; }
-    const id = group.id;
-    if (!id) { notify("This server is not available"); return; }
-    const isJoined = myIds.includes(id);
-    const isPending = pendingIds.includes(id);
-    setBusyId(id);
+    if (!group.id) { notify("This server is not available"); return; }
+    const join = !myIds.includes(group.id);
+    setBusyId(group.id);
     try {
-      if (isJoined) {
-        await setGroupMembership(id, profileId, false);
-        setMyIds(ids => ids.filter(item => item !== id));
-        onMembership(group.name, false);
-        notify(`You left ${group.name}`);
-      } else if (isPending) {
-        await cancelJoinRequest(id);
-        setPendingIds(ids => ids.filter(item => item !== id));
-        notify("Request cancelled");
-      } else if (group.joinMode === "approval") {
-        const result = await requestJoinServer(id);
-        if (result === "pending") { setPendingIds(ids => [...ids, id]); notify("Request sent. An admin will review it."); }
-        else { setMyIds(ids => [...ids, id]); onMembership(group.name, true); notify(`You joined ${group.name}`); }
-      } else {
-        await setGroupMembership(id, profileId, true);
-        setMyIds(ids => [...ids, id]);
-        onMembership(group.name, true);
-        notify(`You joined ${group.name}`);
-      }
+      await setGroupMembership(group.id, profileId, join);
+      setMyIds(ids => (join ? [...ids, group.id!] : ids.filter(id => id !== group.id)));
+      onMembership(group.name, join);
+      notify(join ? `You joined ${group.name}` : `You left ${group.name}`);
       await onRefresh();
-    } catch (cause) {
-      notify(cause instanceof Error && cause.message ? cause.message : "Could not update membership");
+    } catch {
+      notify("Could not update membership");
     } finally {
       setBusyId(null);
-    }
-  }
-
-  function joinLabel(group: UniversityGroup): ReactNode {
-    if (group.ownerId === profileId) return <><Crown size={15}/> You own this</>;
-    if (myIds.includes(group.id ?? "")) return <><Check size={15}/> Joined</>;
-    if (pendingIds.includes(group.id ?? "")) return <><Clock size={15}/> Requested</>;
-    if (group.joinMode === "approval") return <><Lock size={15}/> Request to join</>;
-    return <><Plus size={15}/> Join server</>;
-  }
-
-  async function runAction(work: () => Promise<void>, success: string) {
-    setActionBusy(true);
-    try {
-      await work();
-      notify(success);
-      if (selected?.id) setMembers(await fetchGroupMembers(selected.id));
-      await onRefresh();
-    } catch (cause) {
-      notify(cause instanceof Error && cause.message ? cause.message : "That did not work. Try again.");
-    } finally {
-      setActionBusy(false);
-      setManageId(null);
-    }
-  }
-
-  async function decide(request: JoinRequest, approve: boolean) {
-    setActionBusy(true);
-    try {
-      await decideJoinRequest(request.id, approve);
-      setRequests(rows => (rows ?? []).filter(item => item.id !== request.id));
-      notify(approve ? `${request.name} joined the server` : "Request declined");
-      if (approve) { if (selected?.id) setMembers(await fetchGroupMembers(selected.id)); await onRefresh(); }
-    } catch (cause) {
-      notify(cause instanceof Error && cause.message ? cause.message : "Could not update the request");
-    } finally {
-      setActionBusy(false);
     }
   }
 
@@ -415,13 +303,6 @@ export default function CampusServers(props: Props) {
       universityId={universityId}
       notify={notify}
       onClose={() => setForm(null)}
-      onDeleted={async () => {
-        const name = selected?.name;
-        setForm(null);
-        if (name) onMembership(name, false);
-        await onRefresh();
-        onBack();
-      }}
       onSaved={async id => {
         setForm(null);
         await onRefresh();
@@ -479,8 +360,8 @@ export default function CampusServers(props: Props) {
                   </span>
                   {group.description && <span className="cs-desc">{group.description}</span>}
                 </button>
-                <button className={`cs-btn cs-join ${joinedHere || pendingIds.includes(group.id ?? "") ? "" : "cs-btn-solid"}`} disabled={busyId === group.id || group.ownerId === profileId} onClick={() => void toggleJoin(group)}>
-                  {joinLabel(group)}
+                <button className={`cs-btn cs-join ${joinedHere ? "" : "cs-btn-solid"}`} disabled={busyId === group.id || group.ownerId === profileId} onClick={() => void toggleJoin(group)}>
+                  {group.ownerId === profileId ? <><Crown size={15}/> You own this</> : joinedHere ? <><Check size={15}/> Joined</> : <><Plus size={15}/> Join server</>}
                 </button>
               </article>
             );
@@ -496,7 +377,6 @@ export default function CampusServers(props: Props) {
     return <div className="cs"><div className="cs-empty"><b>Choose a server</b><p>Open a server from Campus Servers to see it here.</p><button className="cs-btn" onClick={onBack}>Back to servers</button></div></div>;
   }
   const isOwner = !!profileId && selected.ownerId === profileId;
-  const isAdminRole = isOwner || myRole === "admin";
   const isMember = !!selected.id && myIds.includes(selected.id);
   const ownerMember = members?.find(member => member.profileId === selected.ownerId);
 
@@ -513,12 +393,12 @@ export default function CampusServers(props: Props) {
         <ServerIcon group={selected} size={76}/>
         <div className="cs-head-text">
           <h2>{selected.name}</h2>
-          <p>{selected.category} · {selected.members}{selected.joinMode === "approval" ? " · Approval required" : ""}</p>
+          <p>{selected.category} · {selected.members}</p>
         </div>
         <div className="cs-head-actions">
           {isOwner
             ? <button className="cs-btn" onClick={() => setForm("edit")}><Pencil size={15}/> Edit</button>
-            : <button className={`cs-btn ${isMember || pendingIds.includes(selected.id ?? "") ? "" : "cs-btn-solid"}`} disabled={busyId === selected.id} onClick={() => void toggleJoin(selected)}>{joinLabel(selected)}</button>}
+            : <button className={`cs-btn ${isMember ? "" : "cs-btn-solid"}`} disabled={busyId === selected.id} onClick={() => void toggleJoin(selected)}>{isMember ? <><Check size={15}/> Joined</> : <><Plus size={15}/> Join</>}</button>}
         </div>
       </div>
       {selected.description && <p className="cs-about-line">{selected.description}</p>}
@@ -527,7 +407,6 @@ export default function CampusServers(props: Props) {
         <button className={tab === "posts" ? "active" : ""} onClick={() => setTab("posts")}><FileText size={16}/> Posts</button>
         <button className={tab === "chat" ? "active" : ""} onClick={() => setTab("chat")}><MessageSquare size={16}/> Chat</button>
         <button className={tab === "members" ? "active" : ""} onClick={() => setTab("members")}><Users size={16}/> Members</button>
-        {isManager && <button className={tab === "requests" ? "active" : ""} onClick={() => setTab("requests")}><UserCheck size={16}/> Requests{requests && requests.length > 0 ? <em className="cs-count">{requests.length}</em> : null}</button>}
         <button className={tab === "about" ? "active" : ""} onClick={() => setTab("about")}><Info size={16}/> About</button>
       </div>
 
@@ -555,7 +434,7 @@ export default function CampusServers(props: Props) {
       )}
 
       {tab === "chat" && selected.id && (
-        <div className="cs-panel"><ServerChat groupId={selected.id} profileId={profileId} isMember={isMember} canModerate={isManager} notify={notify}/></div>
+        <div className="cs-panel"><ServerChat groupId={selected.id} profileId={profileId} isMember={isMember} isOwner={isOwner} notify={notify}/></div>
       )}
 
       {tab === "members" && (
@@ -563,59 +442,15 @@ export default function CampusServers(props: Props) {
           {members === null && <div className="cs-empty"><p>Loading members...</p></div>}
           {members?.length === 0 && <div className="cs-empty"><p>No members yet.</p></div>}
           <div className="cs-members">
-            {[...(members ?? [])].sort((a, b) => Number(b.profileId === selected.ownerId) - Number(a.profileId === selected.ownerId)).map(member => {
-              const isTarget = member.profileId === selected.ownerId;
-              const canManage = !isTarget && member.profileId !== profileId && (isOwner || (myRole === "admin" && (member.role === "member" || member.role === "moderator")));
-              const open = manageId === member.profileId;
-              return (
-                <div className="cs-member-wrap" key={member.profileId}>
-                  <div className="cs-member">
-                    <button className="cs-member-main" onClick={() => onOpenMember(member.profileId)}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={member.avatar} alt="" loading="lazy" decoding="async"/>
-                      <span className="cs-member-text"><b>{member.name}</b><small>{member.department || member.headline || "Member"}</small></span>
-                    </button>
-                    {isTarget ? <span className="cs-role"><Crown size={13}/> Owner</span> : member.role !== "member" ? <span className="cs-role"><Shield size={13}/> {member.role === "admin" ? "Admin" : "Moderator"}</span> : null}
-                    {canManage && <button className="cs-kebab" aria-label="Manage member" onClick={() => setManageId(open ? null : member.profileId)}><MoreHorizontal size={18}/></button>}
-                  </div>
-                  {open && selected.id && (
-                    <div className="cs-manage">
-                      {isOwner && (["admin", "moderator", "member"] as const).filter(role => role !== member.role).map(role => (
-                        <button key={role} className="cs-chip-btn" disabled={actionBusy} onClick={() => void runAction(() => setServerMemberRole(selected.id!, member.profileId, role), `${member.name} is now ${role === "member" ? "a member" : `an ${role === "admin" ? "admin" : "moderator"}`}`.replace("an moderator", "a moderator"))}>Make {role}</button>
-                      ))}
-                      {isOwner && (
-                        <button className="cs-chip-btn" disabled={actionBusy} onClick={() => { if (confirmKey !== `own:${member.profileId}`) { setConfirmKey(`own:${member.profileId}`); return; } void runAction(() => transferServerOwnership(selected.id!, member.profileId), `${member.name} is the new owner`); }}>{confirmKey === `own:${member.profileId}` ? "Tap again to confirm" : "Make owner"}</button>
-                      )}
-                      {isAdminRole && (
-                        <button className="cs-chip-btn cs-chip-danger" disabled={actionBusy} onClick={() => { if (confirmKey !== `rm:${member.profileId}`) { setConfirmKey(`rm:${member.profileId}`); return; } void runAction(() => removeServerMember(selected.id!, member.profileId), `${member.name} was removed`); }}><UserX size={14}/> {confirmKey === `rm:${member.profileId}` ? "Tap again to remove" : "Remove"}</button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {tab === "requests" && isManager && (
-        <div className="cs-panel">
-          {requests === null && <div className="cs-empty"><p>Loading requests...</p></div>}
-          {requests?.length === 0 && <div className="cs-empty"><UserCheck size={26}/><b>No pending requests</b><p>{selected.joinMode === "approval" ? "New join requests will show up here." : "This server is open. Turn on approval in Edit to review requests."}</p></div>}
-          {requests?.map(request => (
-            <div className="cs-request" key={request.id}>
-              <button className="cs-member-main" onClick={() => onOpenMember(request.profileId)}>
+            {[...(members ?? [])].sort((a, b) => Number(b.profileId === selected.ownerId) - Number(a.profileId === selected.ownerId)).map(member => (
+              <button className="cs-member" key={member.profileId} onClick={() => onOpenMember(member.profileId)}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={request.avatar} alt="" loading="lazy" decoding="async"/>
-                <span className="cs-member-text"><b>{request.name}</b><small>{request.department || request.headline || "Member"}</small></span>
+                <img src={member.avatar} alt="" loading="lazy" decoding="async"/>
+                <span className="cs-member-text"><b>{member.name}</b><small>{member.department || member.headline || "Member"}</small></span>
+                {member.profileId === selected.ownerId ? <span className="cs-role"><Crown size={13}/> Owner</span> : member.role !== "member" ? <span className="cs-role">{member.role === "admin" ? "Admin" : "Moderator"}</span> : null}
               </button>
-              {request.message && <p className="cs-request-note">{request.message}</p>}
-              <div className="cs-request-actions">
-                <button className="cs-btn" disabled={actionBusy} onClick={() => void decide(request, false)}><X size={15}/> Decline</button>
-                <button className="cs-btn cs-btn-solid" disabled={actionBusy} onClick={() => void decide(request, true)}><Check size={15}/> Approve</button>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
@@ -630,7 +465,6 @@ export default function CampusServers(props: Props) {
             <ul className="cs-facts">
               <li><span>Category</span><b>{selected.category}</b></li>
               <li><span>Members</span><b>{selected.memberCount ?? 0}</b></li>
-              <li><span>Joining</span><b>{selected.joinMode === "approval" ? "Approval required" : "Open to everyone"}</b></li>
               <li><span>University</span><b>{universityName}</b></li>
               {selected.createdAt && <li><span>Created</span><b>{new Date(selected.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</b></li>}
               {ownerMember && <li><span>Owner</span><b>{ownerMember.name}</b></li>}
